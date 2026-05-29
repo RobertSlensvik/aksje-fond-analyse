@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtuelt miljø
+venv/
+env/
+ENV/
+.venv/
+
+# Test/dekning
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+
+# Type-sjekkere / linters
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logging og output
+*.log
+/tmp/
+
+# Brukerens personlige data — ikke commit til GitHub.
+# Hele data/-katalogen er gitignored; opprettes automatisk ved oppstart.
+data/
+
+# Eldre filnavn (før migrering til data/) — fortsatt ignored for trygghet
+beholdning.json
+bruker_instrumenter.json
+bruker_portefolje.json
+
+# Lokale Claude/CLI-config
+.claude/
+
+# Docker
+.docker/
+
+# Miljøvariabler
+.env
+.env.local
