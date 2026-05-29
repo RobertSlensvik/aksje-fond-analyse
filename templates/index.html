@@ -1,0 +1,2250 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📈 Aksje & Fond Analyse</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    /* ── Reset & variabler ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #0f1117;
+      --surface:  #1a1d27;
+      --card:     #21253a;
+      --border:   #2e3350;
+      --accent:   #3b82f6;
+      --accent2:  #10b981;
+      --danger:   #ef4444;
+      --warn:     #f59e0b;
+      --text:     #e2e8f0;
+      --muted:    #94a3b8;
+      --radius:   12px;
+      --shadow:   0 4px 24px rgba(0,0,0,.45);
+      --font:     'Segoe UI', system-ui, sans-serif;
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+    /* ── Layout ── */
+    header {
+      background: linear-gradient(135deg, #1e2340 0%, #0f1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(10px);
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -.3px; }
+    header h1 span { color: var(--accent); }
+    .header-info { font-size: .8rem; color: var(--muted); text-align: right; }
+    main { max-width: 1400px; margin: 0 auto; padding: 28px 24px; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 6px; margin-bottom: 24px; flex-wrap: wrap; }
+    .tab-btn {
+      padding: 8px 20px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--muted); cursor: pointer;
+      font-size: .85rem; font-weight: 600; transition: all .2s;
+    }
+    .tab-btn:hover { color: var(--text); border-color: var(--accent); }
+    .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Kort grid ── */
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 18px 20px; cursor: pointer; transition: all .2s;
+      position: relative; overflow: hidden;
+    }
+    .card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--accent); opacity: 0; transition: opacity .2s;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--accent); }
+    .card:hover::before { opacity: 1; }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .card-name { font-weight: 700; font-size: .95rem; }
+    .card-ticker { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+    .card-badge {
+      font-size: .7rem; padding: 3px 8px; border-radius: 99px;
+      background: rgba(59,130,246,.15); color: var(--accent); border: 1px solid rgba(59,130,246,.3);
+    }
+    .card-badge.fond { background: rgba(16,185,129,.15); color: var(--accent2); border-color: rgba(16,185,129,.3); }
+    .card-price { font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; }
+    .card-change { font-size: .85rem; font-weight: 600; }
+    .pos { color: var(--accent2); }
+    .neg { color: var(--danger); }
+    .neu { color: var(--muted); }
+    .card-meta { margin-top: 12px; display: flex; gap: 12px; flex-wrap: wrap; }
+    .meta-item { font-size: .75rem; color: var(--muted); }
+    .meta-item strong { color: var(--text); display: block; font-size: .8rem; }
+    .loading-card { color: var(--muted); font-size: .85rem; animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── Detalj-side ── */
+    #detalj-panel { display: none; }
+    #detalj-panel.active { display: block; }
+    .detalj-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 24px; flex-wrap: wrap; gap: 16px;
+    }
+    .detalj-title { font-size: 1.6rem; font-weight: 800; }
+    .detalj-price-box { text-align: right; }
+    .detalj-price { font-size: 2rem; font-weight: 800; }
+    .btn {
+      padding: 9px 18px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text); cursor: pointer;
+      font-size: .85rem; font-weight: 600; transition: all .2s;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { background: #2563eb; }
+
+    /* ── Periode-velger ── */
+    .periode-velger { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+    .per-btn {
+      padding: 5px 14px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--muted); cursor: pointer;
+      font-size: .8rem; font-weight: 600; transition: all .2s;
+    }
+    .per-btn:hover { color: var(--text); border-color: var(--accent); }
+    .per-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* ── Chart-container ── */
+    .chart-wrap {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; margin-bottom: 20px;
+    }
+    .chart-wrap canvas { max-height: 340px; }
+
+    /* ── Nøkkeltall-tabell ── */
+    .nøkkeltall-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px; margin-bottom: 24px;
+    }
+    .nøkkel-kort {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 16px;
+    }
+    .nøkkel-label { font-size: .75rem; color: var(--muted); margin-bottom: 6px; }
+    .nøkkel-verdi { font-size: 1.1rem; font-weight: 700; }
+
+    /* ── Sammenlign ── */
+    .sammenlign-valg {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: center;
+    }
+    .sammenlign-valg label {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 7px 14px; cursor: pointer;
+      font-size: .82rem; transition: all .2s;
+    }
+    .sammenlign-valg label:hover { border-color: var(--accent); }
+    .sammenlign-valg input[type=checkbox]:checked + span { color: var(--accent); font-weight: 700; }
+    .sammenlign-valg input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
+
+    /* ── Beskrivelse ── */
+    .beskrivelse {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 20px;
+      font-size: .85rem; color: var(--muted); line-height: 1.7;
+      margin-bottom: 20px;
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin .8s linear infinite; margin: 40px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Filter pills ── */
+    .filter-rad { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filter-btn {
+      padding: 6px 16px; border-radius: 99px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--muted); cursor: pointer;
+      font-size: .8rem; font-weight: 600; transition: all .2s;
+    }
+    .filter-btn:hover { color: var(--text); border-color: var(--accent); }
+    .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* ── Nyheter ── */
+    .nyhet-kort {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 18px 20px; margin-bottom: 14px;
+    }
+    .nyhet-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 16px; flex-wrap: wrap; margin-bottom: 12px;
+    }
+    .nyhet-tittel-rad { flex: 1; min-width: 220px; }
+    .nyhet-tittel { font-weight: 700; font-size: 1rem; }
+    .nyhet-ticker { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+    .nyhet-prognose {
+      text-align: right;
+      font-size: 1.4rem; font-weight: 800;
+    }
+    .nyhet-score { font-size: .8rem; color: var(--muted); margin-top: 2px; font-weight: 500; }
+    .sentiment-bar {
+      height: 6px; border-radius: 3px; overflow: hidden;
+      background: var(--border); display: flex; margin-bottom: 12px;
+    }
+    .sentiment-bar > div { height: 100%; }
+    .sb-pos { background: var(--accent2); }
+    .sb-neg { background: var(--danger); }
+    .sb-neu { background: var(--muted); }
+    .nyhet-stats { font-size: .75rem; color: var(--muted); margin-bottom: 14px; display: flex; gap: 14px; flex-wrap: wrap; }
+    .nyhet-stats span strong { color: var(--text); }
+    .nyhet-saker { display: flex; flex-direction: column; gap: 8px; }
+    .nyhet-sak {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 8px 12px; background: var(--surface); border-radius: 8px;
+      border-left: 3px solid var(--border);
+      font-size: .82rem; line-height: 1.5;
+    }
+    .nyhet-sak.positiv { border-left-color: var(--accent2); }
+    .nyhet-sak.negativ { border-left-color: var(--danger); }
+    .nyhet-sak a { color: var(--text); text-decoration: none; }
+    .nyhet-sak a:hover { color: var(--accent); }
+    .nyhet-sak-meta { font-size: .7rem; color: var(--muted); margin-top: 3px; }
+    .nyhet-ingen { color: var(--muted); font-style: italic; font-size: .85rem; }
+
+    /* ── Hete forslag (topp 3) ── */
+    .hete-wrap {
+      background: linear-gradient(135deg, rgba(255,168,0,.10), rgba(255,90,90,.06));
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px 18px; margin-bottom: 22px;
+    }
+    .hete-tittel { font-size: .95rem; font-weight: 700; margin-bottom: 4px; }
+    .hete-undertittel { font-size: .75rem; color: var(--muted); margin-bottom: 14px; }
+    .hete-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    .hete-kort {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .hete-rank { font-size: .7rem; color: var(--muted); font-weight: 700; letter-spacing: .05em; }
+    .hete-navn { font-weight: 700; font-size: .95rem; }
+    .hete-meta { font-size: .72rem; color: var(--muted); }
+    .hete-sak { font-size: .8rem; line-height: 1.45; margin-top: 4px; }
+    .hete-sak a { color: var(--text); text-decoration: none; }
+    .hete-sak a:hover { color: var(--accent); }
+    .hete-tom { color: var(--muted); font-size: .85rem; font-style: italic; }
+
+    /* ── Min portefølje ── */
+    .port-toppbar {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 18px;
+    }
+    .port-sum {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 16px; font-size: .85rem; color: var(--muted);
+    }
+    .port-sum strong { color: var(--text); font-size: 1.1rem; margin-left: 6px; }
+    .port-sum .gev-pos { color: var(--accent2); margin-left: 10px; font-weight: 600; }
+    .port-sum .gev-neg { color: var(--danger); margin-left: 10px; font-weight: 600; }
+    .port-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+    .port-kort {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 18px 20px;
+    }
+    .port-kort h3 { font-size: 1.05rem; margin-bottom: 2px; }
+    .port-kort .port-ticker { font-size: .72rem; color: var(--muted); margin-bottom: 12px; }
+    .port-pris-rad { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+    .port-pris { font-size: 1.3rem; font-weight: 700; }
+    .port-endring { font-size: .8rem; font-weight: 600; }
+    .port-avk1y { font-size: .7rem; color: var(--muted); margin-bottom: 12px; }
+    .port-spark { height: 60px; margin-bottom: 14px; }
+    .port-input-rad { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .port-input-rad label { font-size: .7rem; color: var(--muted); display: block; margin-bottom: 3px; }
+    .port-input-rad input {
+      width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text); font-size: .9rem;
+    }
+    .port-beregn {
+      background: var(--surface); border-radius: 8px; padding: 10px 12px;
+      margin-bottom: 12px; font-size: .82rem;
+    }
+    .port-beregn-rad { display: flex; justify-content: space-between; margin: 3px 0; }
+    .port-beregn-rad .label { color: var(--muted); }
+    .port-beregn-rad .val { font-weight: 600; }
+    .port-saker-tittel { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+    .port-sak-rad {
+      font-size: .78rem; padding: 6px 0; border-top: 1px solid var(--border); line-height: 1.4;
+    }
+    .port-sak-rad a { color: var(--text); text-decoration: none; }
+    .port-sak-rad a:hover { color: var(--accent); }
+    .port-sak-meta { font-size: .68rem; color: var(--muted); margin-top: 2px; }
+
+    /* ── Prognose ── */
+    .prognose-form {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+    }
+    .form-rad { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
+    .form-rad label { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
+    .form-label { font-size: .8rem; color: var(--muted); font-weight: 600; }
+    .form-rad select, .form-rad input {
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); padding: 10px 12px; border-radius: 8px;
+      font-size: .9rem; font-family: var(--font);
+    }
+    .form-rad select:focus, .form-rad input:focus {
+      outline: none; border-color: var(--accent);
+    }
+    .prognose-stat {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px; margin-bottom: 20px;
+    }
+    .prognose-stat .nøkkel-kort { text-align: center; }
+    .prognose-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;
+    }
+    .prognose-kort {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px;
+    }
+    .prognose-ar { font-size: .9rem; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
+    .prognose-forventet { font-size: 1.8rem; font-weight: 800; color: var(--accent2); margin-bottom: 4px; }
+    .prognose-gevinst { font-size: .85rem; color: var(--muted); margin-bottom: 14px; }
+    .prognose-rad {
+      display: flex; justify-content: space-between; font-size: .82rem;
+      padding: 4px 0; color: var(--muted);
+    }
+    .prognose-rad strong { color: var(--text); font-weight: 700; }
+    .prognose-rad.lav strong { color: var(--danger); }
+    .prognose-rad.hoy strong { color: var(--accent2); }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 999;
+      background: var(--accent); color: #fff; border-radius: 10px;
+      padding: 12px 20px; font-size: .85rem; font-weight: 600;
+      transform: translateY(80px); opacity: 0;
+      transition: all .3s; pointer-events: none;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+
+    /* ── Markedstemperatur ── */
+    .marked-bar {
+      display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 20px;
+      padding: 10px 14px; background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); align-items: center;
+    }
+    .marked-stemning {
+      font-weight: 700; font-size: .85rem; padding: 5px 12px;
+      border-radius: 6px; margin-right: 4px;
+    }
+    .marked-stemning.pos { background: rgba(16,185,129,.15); color: var(--accent2); }
+    .marked-stemning.neg { background: rgba(239,68,68,.15);  color: var(--danger); }
+    .marked-stemning.neu { background: var(--surface);        color: var(--muted); }
+    .marked-item {
+      display: flex; flex-direction: column; padding: 4px 12px;
+      border-left: 1px solid var(--border);
+    }
+    .marked-item .navn   { font-size: .68rem; color: var(--muted); }
+    .marked-item .verdi  { font-size: .9rem; font-weight: 700; }
+    .marked-item .endring { font-size: .7rem; font-weight: 600; }
+
+    /* ── Risiko-panel ── */
+    .risiko-wrap {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px; margin-bottom: 20px;
+    }
+    .risiko-tittel { font-size: .95rem; font-weight: 700; margin-bottom: 4px; }
+    .risiko-undertittel { font-size: .72rem; color: var(--muted); margin-bottom: 12px; }
+    .risiko-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px; margin-bottom: 14px;
+    }
+    .risiko-kort {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px;
+    }
+    .risiko-kort .label { font-size: .68rem; color: var(--muted); margin-bottom: 4px; }
+    .risiko-kort .verdi { font-size: 1.1rem; font-weight: 700; }
+    .risiko-kort .hint  { font-size: .68rem; color: var(--muted); margin-top: 3px; }
+    .risiko-kort.pos .verdi { color: var(--accent2); }
+    .risiko-kort.neg .verdi { color: var(--danger); }
+    .bench-info { font-size: .8rem; color: var(--muted); margin: 14px 0 8px; }
+
+    /* ── Kalkulator ── */
+    .kalk-wrap {
+      display: grid; grid-template-columns: 1fr 2fr; gap: 20px;
+    }
+    @media (max-width: 900px) { .kalk-wrap { grid-template-columns: 1fr; } }
+    .kalk-form {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px;
+    }
+    .kalk-form h3 {
+      font-size: .8rem; color: var(--muted); text-transform: uppercase;
+      letter-spacing: .05em; margin: 14px 0 8px; font-weight: 700;
+    }
+    .kalk-form h3:first-child { margin-top: 0; }
+    .kalk-felt { margin-bottom: 12px; }
+    .kalk-felt label {
+      display: block; font-size: .75rem; color: var(--muted); margin-bottom: 4px;
+    }
+    .kalk-felt input[type=number], .kalk-felt input[type=range] {
+      width: 100%; padding: 8px 10px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--text); font-size: .9rem;
+    }
+    .kalk-felt input[type=range] { padding: 0; }
+    .kalk-felt .verdi-rad {
+      display: flex; justify-content: space-between; align-items: baseline;
+    }
+    .kalk-felt .verdi-rad .verdi {
+      font-size: .85rem; font-weight: 700; color: var(--accent);
+    }
+    .kalk-rad { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .kalk-check {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 6px;
+      font-size: .82rem; cursor: pointer; margin-top: 8px;
+    }
+    .kalk-check input { accent-color: var(--accent); width: 14px; height: 14px; }
+    .kalk-resultat {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px;
+    }
+    .kalk-stats {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px; margin-bottom: 16px;
+    }
+    .kalk-stat-kort {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px;
+    }
+    .kalk-stat-kort .label { font-size: .68rem; color: var(--muted); margin-bottom: 3px; }
+    .kalk-stat-kort .verdi { font-size: 1.15rem; font-weight: 800; }
+    .kalk-stat-kort.mal .verdi { color: var(--accent2); }
+    .kalk-stat-kort.pess .verdi { color: var(--danger); }
+    .kalk-stat-kort.opt .verdi { color: var(--accent2); }
+    .kalk-sanns-bar {
+      background: var(--surface); border-radius: 8px;
+      padding: 12px 14px; margin-bottom: 14px;
+    }
+    .kalk-sanns-tittel { font-size: .78rem; color: var(--muted); margin-bottom: 8px; }
+    .kalk-sanns-rad { display: flex; gap: 6px; margin-bottom: 4px; align-items: center; font-size: .82rem; }
+    .kalk-sanns-rad .lab { flex: 0 0 90px; color: var(--muted); }
+    .kalk-sanns-rad .meter {
+      flex: 1; height: 12px; background: var(--border); border-radius: 6px; overflow: hidden;
+    }
+    .kalk-sanns-rad .meter > div { height: 100%; background: var(--accent); }
+    .kalk-sanns-rad .pct { flex: 0 0 50px; text-align: right; font-weight: 700; }
+    .kalk-chart-wrap { margin-bottom: 14px; }
+    .kalk-chart-wrap canvas { max-height: 200px; }
+    .kalk-chart-tittel { font-size: .75rem; color: var(--muted); margin-bottom: 6px; }
+
+    /* ── Mine instrumenter ── */
+    .inst-form {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px; margin-bottom: 18px;
+    }
+    .inst-form h3 {
+      font-size: .85rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .05em;
+      margin-bottom: 10px; font-weight: 700;
+    }
+    .inst-form-rad {
+      display: grid; grid-template-columns: 1.2fr auto 2fr auto 1fr 0.8fr auto;
+      gap: 8px; align-items: end;
+    }
+    @media (max-width: 900px) { .inst-form-rad { grid-template-columns: 1fr 1fr; } }
+    .inst-form-rad label {
+      font-size: .7rem; color: var(--muted); display: block; margin-bottom: 3px;
+    }
+    .inst-form-rad input, .inst-form-rad select {
+      width: 100%; padding: 8px 10px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--text); font-size: .85rem; font-family: var(--font);
+    }
+    .inst-form-rad button { white-space: nowrap; }
+    .inst-tabell {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .inst-tabell table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .inst-tabell th, .inst-tabell td {
+      padding: 10px 14px; text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .inst-tabell th {
+      background: var(--surface); color: var(--muted);
+      font-weight: 600; font-size: .72rem;
+      text-transform: uppercase; letter-spacing: .03em;
+    }
+    .inst-tabell tr:last-child td { border-bottom: none; }
+    .inst-tabell tr:hover { background: rgba(59,130,246,.04); }
+    .inst-tabell td.center { text-align: center; }
+    .inst-badge {
+      font-size: .65rem; padding: 2px 8px; border-radius: 99px;
+      font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
+    }
+    .inst-badge.standard { background: rgba(148,163,184,.15); color: var(--muted); }
+    .inst-badge.bruker   { background: rgba(59,130,246,.15);  color: var(--accent); }
+    .inst-badge.aksje    { background: rgba(245,158,11,.15);  color: var(--warn); }
+    .inst-badge.fond     { background: rgba(16,185,129,.15);  color: var(--accent2); }
+    .inst-tabell input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+    .inst-slett {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--danger); padding: 4px 10px; border-radius: 6px;
+      cursor: pointer; font-size: .75rem; transition: all .15s;
+    }
+    .inst-slett:hover { background: rgba(239,68,68,.1); border-color: var(--danger); }
+    .inst-slett:disabled {
+      color: var(--muted); cursor: not-allowed; opacity: 0.4;
+    }
+    .inst-slett:disabled:hover { background: transparent; border-color: var(--border); }
+    .inst-hint {
+      font-size: .75rem; color: var(--muted); margin-top: 8px;
+      padding: 8px 12px; background: rgba(59,130,246,.05);
+      border-left: 3px solid var(--accent); border-radius: 4px;
+    }
+
+    /* ── Korrelasjonsmatrise ── */
+    .korr-wrap {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px; margin-top: 22px;
+    }
+    .korr-tittel { font-size: .95rem; font-weight: 700; margin-bottom: 4px; }
+    .korr-undertittel { font-size: .72rem; color: var(--muted); margin-bottom: 14px; }
+    .korr-tabell { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    .korr-tabell th, .korr-tabell td {
+      padding: 8px 10px; text-align: center; border: 1px solid var(--border);
+    }
+    .korr-tabell th { color: var(--muted); font-weight: 600; font-size: .72rem; }
+    .korr-tabell td.label { text-align: left; color: var(--muted); font-weight: 600; }
+    .korr-celle { font-weight: 700; }
+
+    /* ── Responsiv ── */
+    @media (max-width: 600px) {
+      main { padding: 16px 12px; }
+      header { padding: 14px 16px; }
+      .detalj-price { font-size: 1.4rem; }
+      .marked-item { border-left: none; padding: 4px 0; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>📈 Aksje &amp; <span>Fond Analyse</span></h1>
+    <div style="font-size:.75rem;color:var(--muted);margin-top:3px">Lokal analyse av norske og internasjonale markeder</div>
+  </div>
+  <div class="header-info">
+    <div id="sist-oppdatert">Laster data…</div>
+    <button class="btn" style="margin-top:6px;font-size:.75rem;padding:5px 12px" onclick="lastAllData()">🔄 Oppdater</button>
+  </div>
+</header>
+
+<main>
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="byttTab('portefolje', this)">💼 Min portefølje</button>
+    <button class="tab-btn" onclick="byttTab('oversikt', this)">📊 Oversikt</button>
+    <button class="tab-btn" onclick="byttTab('nyheter', this)">📰 Nyheter</button>
+    <button class="tab-btn" onclick="byttTab('sammenlign', this)">⚖️ Sammenlign</button>
+    <button class="tab-btn" onclick="byttTab('prognose', this)">💰 Prognose</button>
+    <button class="tab-btn" onclick="byttTab('kalkulator', this)">🧮 Kalkulator</button>
+    <button class="tab-btn" onclick="byttTab('instrumenter', this)">⚙️ Mine instrumenter</button>
+  </div>
+
+  <!-- MARKEDSTERMOMETER -->
+  <div id="marked-bar" class="marked-bar" style="display:none"></div>
+
+  <!-- OVERSIKT -->
+  <!-- MIN PORTEFØLJE -->
+  <div id="tab-portefolje" class="tab-content active">
+    <div class="port-toppbar">
+      <h2 style="font-size:1.1rem">💼 Min portefølje</h2>
+      <div class="port-sum">
+        Total verdi:<strong id="port-total">–</strong>
+        <span id="port-gevinst"></span>
+        <span id="port-lagre-status" style="margin-left:14px;font-size:.72rem;color:var(--muted)"></span>
+        <button class="btn" style="margin-left:10px;font-size:.7rem;padding:4px 10px" onclick="lastPortefolje(true)">🔄</button>
+      </div>
+    </div>
+    <div id="port-innhold">
+      <div style="text-align:center;padding:40px"><div class="spinner"></div>
+        <div style="margin-top:12px;color:var(--muted);font-size:.85rem">Henter porteføljedata…</div>
+      </div>
+    </div>
+    <div id="port-korrelasjon"></div>
+    <p style="font-size:.72rem;color:var(--muted);margin-top:18px;font-style:italic">
+      Antall andeler og snittpris lagres i <code>beholdning.json</code> i prosjektmappen — overlever browser-bytte og cache-tømming. Kursdata kan være forsinket inntil 15 min.
+    </p>
+  </div>
+
+  <div id="tab-oversikt" class="tab-content">
+    <div class="filter-rad">
+      <button class="filter-btn active" data-filter="alle" onclick="settFilter(this)">Alle</button>
+      <button class="filter-btn" data-filter="aksje" onclick="settFilter(this)">🏢 Aksjer</button>
+      <button class="filter-btn" data-filter="fond"  onclick="settFilter(this)">🌍 Fond/ETF</button>
+    </div>
+    <div id="oversikt-grid" class="cards-grid">
+      <div class="loading-card" style="grid-column:1/-1;text-align:center;padding:40px">
+        <div class="spinner"></div>
+        <div style="margin-top:12px">Henter markedsdata…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NYHETER -->
+  <div id="tab-nyheter" class="tab-content">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:10px">
+      <h2 style="font-size:1.1rem">📰 Nyheter & sentiment-prognose</h2>
+      <button class="btn" onclick="lastNyheter(true)">🔄 Oppdater nyheter</button>
+    </div>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:20px;line-height:1.6">
+      Analyserer nyhetsoverskrifter fra <strong>E24</strong> og <strong>Yahoo Finance</strong> for hvert instrument og estimerer kortsiktig retning basert på sentiment (VADER-modell).<br>
+      <strong>↗ Opp</strong>: snitt-sentiment &gt; +0.1 · <strong>↘ Ned</strong>: &lt; -0.1 · <strong>→ Nøytral</strong>: ellers.
+    </p>
+    <div id="hete-forslag"></div>
+    <div class="filter-rad">
+      <button class="filter-btn active" data-filter="alle"  onclick="settNyhetFilter(this)">Alle</button>
+      <button class="filter-btn"        data-filter="aksje" onclick="settNyhetFilter(this)">🏢 Aksjer</button>
+      <button class="filter-btn"        data-filter="fond"  onclick="settNyhetFilter(this)">🌍 Fond/ETF</button>
+    </div>
+    <div id="nyheter-innhold">
+      <div class="loading-card" style="text-align:center;padding:40px">
+        <div style="color:var(--muted);font-size:.9rem">Klikk på Nyheter-fanen for å hente data (~15 sek)</div>
+      </div>
+    </div>
+    <p style="font-size:.75rem;color:var(--muted);margin-top:24px;font-style:italic">
+      ⚠️ Sentiment-prognoser er en grov indikator — ikke investeringsråd. VADER er trent på engelsk, så norske E24-overskrifter scores upresist (reagerer mest på volum og polariserende ord). Topp 3 forslag rangeres på antall ferske saker (siste 7 dager).
+    </p>
+  </div>
+
+  <!-- SAMMENLIGN -->
+  <div id="tab-sammenlign" class="tab-content">
+    <h2 style="margin-bottom:16px;font-size:1.1rem">Velg instrumenter å sammenligne (maks 6)</h2>
+    <div class="sammenlign-valg" id="sammenlign-valg"></div>
+    <div class="periode-velger" id="sammenlign-periode">
+      <button class="per-btn" onclick="oppdaterSammenlign('1M',this)">1M</button>
+      <button class="per-btn" onclick="oppdaterSammenlign('3M',this)">3M</button>
+      <button class="per-btn" onclick="oppdaterSammenlign('6M',this)">6M</button>
+      <button class="per-btn active" onclick="oppdaterSammenlign('1Y',this)">1Y</button>
+      <button class="per-btn" onclick="oppdaterSammenlign('3Y',this)">3Y</button>
+      <button class="per-btn" onclick="oppdaterSammenlign('5Y',this)">5Y</button>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="sammenlign-chart"></canvas>
+    </div>
+    <p style="font-size:.8rem;color:var(--muted)">Normalisert til 100 ved startdato — viser relativ avkastning.</p>
+  </div>
+
+  <!-- PROGNOSE -->
+  <div id="tab-prognose" class="tab-content">
+    <h2 style="margin-bottom:8px;font-size:1.1rem">💰 Investeringsprognose</h2>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:20px;line-height:1.6">
+      Estimerer fremtidig verdi basert på historisk avkastning (CAGR) og volatilitet for valgt instrument.<br>
+      Modellen antar log-normal avkastning. <strong>Pessimistisk</strong> = 5. persentil, <strong>forventet</strong> = median, <strong>optimistisk</strong> = 95. persentil.
+    </p>
+
+    <div class="prognose-form">
+      <div class="form-rad">
+        <label>
+          <span class="form-label">Instrument</span>
+          <select id="prognose-ticker"></select>
+        </label>
+        <label>
+          <span class="form-label">Engangsinnskudd</span>
+          <input type="number" id="prognose-belop" value="2000" min="0" step="500">
+        </label>
+        <label>
+          <span class="form-label">Månedlig sparing</span>
+          <input type="number" id="prognose-manedlig" value="1000" min="0" step="100">
+        </label>
+        <button class="btn primary" onclick="beregnPrognose()">Beregn prognose</button>
+      </div>
+    </div>
+
+    <div id="prognose-resultat" style="margin-top:24px"></div>
+
+    <p style="font-size:.75rem;color:var(--muted);margin-top:24px;font-style:italic">
+      ⚠️ Historisk avkastning er ingen garanti for fremtidig avkastning. Estimatene er en statistisk projeksjon av tidligere mønster og bør kun brukes som indikasjon.
+    </p>
+  </div>
+
+  <!-- KALKULATOR -->
+  <div id="tab-kalkulator" class="tab-content">
+    <h2 style="margin-bottom:6px;font-size:1.1rem">🧮 Spare-kalkulator med glidebane</h2>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:18px;line-height:1.6">
+      Monte Carlo-simulering med konfigurerbar aksje/rente-mix. Glidebanen lar deg holde en høy aksjeandel
+      tidlig (vekst), og gradvis flytte til pengemarked mot målet (beskyttelse).
+    </p>
+    <div class="kalk-wrap">
+      <div class="kalk-form">
+        <h3>Mål & innskudd</h3>
+        <div class="kalk-rad">
+          <div class="kalk-felt">
+            <label>Startkapital (kr)</label>
+            <input type="number" id="kalk-start" value="120000" min="0" step="10000" oninput="kalkOppdater(true)">
+          </div>
+          <div class="kalk-felt">
+            <label>Månedlig sparing (kr)</label>
+            <input type="number" id="kalk-manedlig" value="6000" min="0" step="500" oninput="kalkOppdater(true)">
+          </div>
+        </div>
+        <div class="kalk-rad">
+          <div class="kalk-felt">
+            <label>Horisont (år)</label>
+            <input type="number" id="kalk-ar" value="7" min="1" max="30" step="1" oninput="kalkOppdater(true)">
+          </div>
+          <div class="kalk-felt">
+            <label>Mål (kr)</label>
+            <input type="number" id="kalk-mal" value="1000000" min="0" step="50000" oninput="kalkOppdater(true)">
+          </div>
+        </div>
+
+        <h3>Glidebane (aksjeandel)</h3>
+        <div class="kalk-felt">
+          <div class="verdi-rad">
+            <label>Start-aksjeandel</label>
+            <span class="verdi" id="kalk-start-aksje-v">100%</span>
+          </div>
+          <input type="range" id="kalk-start-aksje" min="0" max="100" value="100" step="5" oninput="kalkOppdater(true)">
+        </div>
+        <div class="kalk-felt">
+          <div class="verdi-rad">
+            <label>Slutt-aksjeandel</label>
+            <span class="verdi" id="kalk-slutt-aksje-v">20%</span>
+          </div>
+          <input type="range" id="kalk-slutt-aksje" min="0" max="100" value="20" step="5" oninput="kalkOppdater(true)">
+        </div>
+        <div class="kalk-felt">
+          <div class="verdi-rad">
+            <label>Hold start-andel i (år)</label>
+            <span class="verdi" id="kalk-hold-aar-v">5</span>
+          </div>
+          <input type="range" id="kalk-hold-aar" min="0" max="20" value="5" step="1" oninput="kalkOppdater(true)">
+        </div>
+        <label class="kalk-check">
+          <input type="checkbox" id="kalk-sjokk" onchange="kalkOppdater(true)">
+          <span>Stresstest: 25% krasj i siste 6 mnd</span>
+        </label>
+
+        <h3>Forventninger (avansert)</h3>
+        <div class="kalk-rad">
+          <div class="kalk-felt">
+            <label>Aksje CAGR (%)</label>
+            <input type="number" id="kalk-aksje-cagr" value="8" min="-20" max="40" step="0.5" oninput="kalkOppdater(true)">
+          </div>
+          <div class="kalk-felt">
+            <label>Aksje vol (%)</label>
+            <input type="number" id="kalk-aksje-vol" value="12.7" min="0" max="60" step="0.5" oninput="kalkOppdater(true)">
+          </div>
+        </div>
+        <div class="kalk-rad">
+          <div class="kalk-felt">
+            <label>Rente CAGR (%)</label>
+            <input type="number" id="kalk-rente-cagr" value="4" min="0" max="15" step="0.25" oninput="kalkOppdater(true)">
+          </div>
+          <div class="kalk-felt">
+            <label>Rente vol (%)</label>
+            <input type="number" id="kalk-rente-vol" value="0.5" min="0" max="5" step="0.1" oninput="kalkOppdater(true)">
+          </div>
+        </div>
+
+        <button class="btn primary" style="width:100%;margin-top:10px" onclick="kalkOppdater(false)">Beregn på nytt</button>
+        <button class="btn" style="width:100%;margin-top:6px;font-size:.75rem" onclick="kalkResetPortefolje()">
+          🔄 Bruk min porteføljes vol
+        </button>
+        <p style="font-size:.7rem;color:var(--muted);margin-top:10px;line-height:1.5;font-style:italic">
+          Antar 0 korrelasjon mellom aksjer og renter, log-normale månedlige avkastninger.
+          Skattefradrag/utbytte ikke inkludert. 20 000 simuleringer per beregning.
+        </p>
+      </div>
+
+      <div class="kalk-resultat" id="kalk-resultat">
+        <div style="text-align:center;padding:60px;color:var(--muted)">Beregner...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MINE INSTRUMENTER -->
+  <div id="tab-instrumenter" class="tab-content">
+    <h2 style="margin-bottom:6px;font-size:1.1rem">⚙️ Mine instrumenter</h2>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:18px;line-height:1.6">
+      Legg til egne aksjer og fond fra Yahoo Finance. Marker hvilke som er i porteføljen din —
+      disse vises under "Min portefølje" og brukes i korrelasjonsanalyse. Personlige instrumenter
+      lagres i <code>bruker_instrumenter.json</code> (gitignored — ender ikke på GitHub).
+    </p>
+
+    <div class="inst-form">
+      <h3>Legg til nytt instrument</h3>
+      <div class="inst-form-rad">
+        <div>
+          <label>Ticker (Yahoo Finance)</label>
+          <input type="text" id="inst-ticker" placeholder="f.eks. TSLA, EQNR.OL, 0P00000MVB.IR">
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button class="btn" onclick="instSjekkTicker()">🔍 Sjekk</button>
+        </div>
+        <div>
+          <label>Navn</label>
+          <input type="text" id="inst-navn" placeholder="Auto-fylt fra Yahoo">
+        </div>
+        <div>
+          <label>Type</label>
+          <select id="inst-type">
+            <option value="aksje">Aksje</option>
+            <option value="fond">Fond/ETF</option>
+          </select>
+        </div>
+        <div>
+          <label>Sektor</label>
+          <input type="text" id="inst-sektor" placeholder="Teknologi, Energi, …">
+        </div>
+        <div>
+          <label>Flagg (emoji)</label>
+          <input type="text" id="inst-flagg" placeholder="🇳🇴 🇺🇸 🌍" maxlength="4">
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button class="btn primary" onclick="instLeggTil()">+ Legg til</button>
+        </div>
+      </div>
+      <div class="inst-hint">
+        💡 Klikk <strong>Sjekk</strong> etter du har skrevet ticker — Yahoo-data fyller inn navn, sektor og type automatisk.
+        For norske fond bruker Yahoo-format <code>0P...IR</code> (finn på fondets Yahoo-side).
+      </div>
+    </div>
+
+    <div class="inst-tabell">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Navn</th>
+            <th>Ticker</th>
+            <th>Type</th>
+            <th>Sektor</th>
+            <th>Kilde</th>
+            <th class="center">I porteføljen</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="inst-tbody">
+          <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--muted)">Laster...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- DETALJ-PANEL (over alt) -->
+  <div id="detalj-panel">
+    <button class="btn" style="margin-bottom:20px" onclick="lukkDetalj()">← Tilbake</button>
+    <div id="detalj-innhold">
+      <div class="spinner"></div>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+/* ── State ─────────────────────────────────────────────────── */
+const ALLE = {{ alle | tojson }};
+let alleData = [];
+let aktivChart = null;
+let sammenlignChart = null;
+let aktivPeriode = "1Y";
+let sammenlignPeriode = "1Y";
+let aktivFilter = "alle";
+let nyheterData = null;
+let nyhetFilter = "alle";
+let portefoljeData = null;
+let portCharts = {};
+let beholdningState = {};
+let beholdningLagreTimer = null;
+
+/* ── Hjelpefunksjoner ────────────────────────────────────────── */
+function vis(el) { el.style.display = ""; el.classList.add("active"); }
+function skjul(el) { el.classList.remove("active"); el.style.display = "none"; }
+function clsColor(pct) {
+  if (pct == null) return "neu";
+  return pct > 0 ? "pos" : pct < 0 ? "neg" : "neu";
+}
+function fmtPct(pct) {
+  if (pct == null) return "–";
+  const sign = pct > 0 ? "+" : "";
+  return `${sign}${pct.toFixed(2)}%`;
+}
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2500);
+}
+
+/* ── Tabs ────────────────────────────────────────────────────── */
+function byttTab(navn, btn) {
+  document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("tab-" + navn).classList.add("active");
+  btn.classList.add("active");
+  document.getElementById("detalj-panel").classList.remove("active");
+
+  if (navn === "sammenlign") byggSammenlignValg();
+  if (navn === "prognose") byggPrognoseValg();
+  if (navn === "nyheter" && nyheterData === null) lastNyheter(false);
+  if (navn === "portefolje" && portefoljeData === null) lastPortefolje(false);
+  if (navn === "kalkulator") kalkOppdater(false);
+  if (navn === "instrumenter") lastInstrumenter();
+}
+
+/* ── Filter for oversikt ─────────────────────────────────────── */
+function settFilter(btn) {
+  aktivFilter = btn.dataset.filter;
+  document.querySelectorAll("#tab-oversikt .filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  visOversikt();
+}
+
+function visOversikt() {
+  const filtrert = aktivFilter === "alle"
+    ? alleData
+    : alleData.filter(d => d.type === aktivFilter);
+  fyllGrid("oversikt-grid", filtrert);
+}
+
+/* ── Kort-bygging ────────────────────────────────────────────── */
+function byggKort(d) {
+  const change = d.endring_pct;
+  const cls = clsColor(change);
+  const arrow = change > 0 ? "▲" : change < 0 ? "▼" : "●";
+  const badgeCls = d.type === "fond" ? "fond" : "";
+  return `
+    <div class="card" onclick="visDetalj('${d.ticker}')">
+      <div class="card-header">
+        <div>
+          <div class="card-name">${d.flagg || ""} ${d.navn}</div>
+          <div class="card-ticker">${d.ticker}</div>
+        </div>
+        <span class="card-badge ${badgeCls}">${d.type === "fond" ? "ETF/Fond" : "Aksje"}</span>
+      </div>
+      <div class="card-price">${d.pris_fmt || "–"}</div>
+      <div class="card-change ${cls}">${arrow} ${fmtPct(change)} (1 dag)</div>
+      <div class="card-meta">
+        <div class="meta-item"><strong>${d.markedsverdi || "–"}</strong>Markedsverdi</div>
+        <div class="meta-item"><strong>${d.pe_ratio || "–"}</strong>P/E</div>
+        <div class="meta-item"><strong>${d.utbytte || "–"}</strong>Utbytte</div>
+      </div>
+    </div>`;
+}
+
+function fyllGrid(gridId, data) {
+  const el = document.getElementById(gridId);
+  if (!data || data.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted)">Ingen data tilgjengelig.</p>';
+    return;
+  }
+  el.innerHTML = data.map(byggKort).join("");
+}
+
+/* ── Hent data ───────────────────────────────────────────────── */
+async function lastAllData() {
+  document.getElementById("sist-oppdatert").textContent = "Oppdaterer…";
+  document.getElementById("oversikt-grid").innerHTML = `
+    <div style="grid-column:1/-1;text-align:center;padding:40px">
+      <div class="spinner"></div><div style="margin-top:12px;color:var(--muted)">Henter markedsdata…</div>
+    </div>`;
+
+  try {
+    const resp = await fetch("/api/oversikt");
+    alleData = await resp.json();
+
+    visOversikt();
+
+    const nå = new Date();
+    document.getElementById("sist-oppdatert").textContent =
+      `Sist oppdatert: ${nå.toLocaleTimeString("no-NO")}`;
+  } catch (e) {
+    document.getElementById("oversikt-grid").innerHTML =
+      `<p style="color:var(--danger);padding:20px">Feil ved henting av data: ${e.message}</p>`;
+    document.getElementById("sist-oppdatert").textContent = "Feil";
+  }
+}
+
+/* ── Detalj ──────────────────────────────────────────────────── */
+async function visDetalj(ticker) {
+  const panel = document.getElementById("detalj-panel");
+  const innhold = document.getElementById("detalj-innhold");
+  panel.classList.add("active");
+  innhold.innerHTML = '<div class="spinner"></div>';
+  window.scrollTo(0, 0);
+
+  // Skjul tabs
+  document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+
+  try {
+    const resp = await fetch(`/api/detalj/${encodeURIComponent(ticker)}`);
+    const d = await resp.json();
+    const cls = clsColor(d.endring_pct);
+
+    innhold.innerHTML = `
+      <div class="detalj-header">
+        <div>
+          <div class="detalj-title">${d.flagg || ""} ${d.navn}</div>
+          <div style="color:var(--muted);font-size:.85rem">${d.ticker} · ${d.sektor}</div>
+        </div>
+        <div class="detalj-price-box">
+          <div class="detalj-price">${d.pris_fmt || "–"}</div>
+          <div class="${cls}" style="font-weight:700;font-size:1rem">${fmtPct(d.endring_pct)} (1 dag)</div>
+        </div>
+      </div>
+
+      ${d.beskrivelse ? `<div class="beskrivelse">${d.beskrivelse}…</div>` : ""}
+
+      <div class="nøkkeltall-grid">
+        <div class="nøkkel-kort"><div class="nøkkel-label">Markedsverdi</div><div class="nøkkel-verdi">${d.markedsverdi||"–"}</div></div>
+        <div class="nøkkel-kort"><div class="nøkkel-label">P/E-tall</div><div class="nøkkel-verdi">${d.pe_ratio||"–"}</div></div>
+        <div class="nøkkel-kort"><div class="nøkkel-label">Utbytte</div><div class="nøkkel-verdi">${d.utbytte||"–"}</div></div>
+        <div class="nøkkel-kort"><div class="nøkkel-label">52-ukers høy</div><div class="nøkkel-verdi">${d["52_ukers_høy"]||"–"}</div></div>
+        <div class="nøkkel-kort"><div class="nøkkel-label">52-ukers lav</div><div class="nøkkel-verdi">${d["52_ukers_lav"]||"–"}</div></div>
+        <div class="nøkkel-kort"><div class="nøkkel-label">50-dagers snitt</div><div class="nøkkel-verdi">${d.snitt_50d||"–"}</div></div>
+        <div class="nøkkel-kort"><div class="nøkkel-label">200-dagers snitt</div><div class="nøkkel-verdi">${d.snitt_200d||"–"}</div></div>
+      </div>
+
+      <div class="periode-velger" id="detalj-periode">
+        <button class="per-btn" onclick="lastHistorikk('${ticker}','1M',this)">1M</button>
+        <button class="per-btn" onclick="lastHistorikk('${ticker}','3M',this)">3M</button>
+        <button class="per-btn" onclick="lastHistorikk('${ticker}','6M',this)">6M</button>
+        <button class="per-btn active" onclick="lastHistorikk('${ticker}','1Y',this)">1Y</button>
+        <button class="per-btn" onclick="lastHistorikk('${ticker}','3Y',this)">3Y</button>
+        <button class="per-btn" onclick="lastHistorikk('${ticker}','5Y',this)">5Y</button>
+      </div>
+
+      <div class="chart-wrap">
+        <canvas id="detalj-chart"></canvas>
+      </div>
+      <div class="chart-wrap" style="height:120px">
+        <canvas id="volum-chart"></canvas>
+      </div>
+
+      <div id="risiko-panel"></div>`;
+
+    await lastHistorikk(ticker, "1Y", document.querySelector("#detalj-periode .per-btn.active"));
+  } catch (e) {
+    innhold.innerHTML = `<p style="color:var(--danger)">Feil: ${e.message}</p>`;
+  }
+}
+
+function lukkDetalj() {
+  document.getElementById("detalj-panel").classList.remove("active");
+  const aktivTab = document.querySelector(".tab-btn.active");
+  if (aktivTab) aktivTab.click();
+}
+
+/* ── Historikk-chart ─────────────────────────────────────────── */
+async function lastHistorikk(ticker, periode, knapp) {
+  document.querySelectorAll("#detalj-periode .per-btn").forEach(b => b.classList.remove("active"));
+  if (knapp) knapp.classList.add("active");
+  // Last risiko parallelt — feiler den, fortsetter pris-chartet uansett.
+  lastRisiko(ticker, periode);
+
+  try {
+    const resp = await fetch(`/api/historikk/${encodeURIComponent(ticker)}/${periode}`);
+    const data = await resp.json();
+    if (data.feil) { toast("⚠️ " + data.feil); return; }
+
+    const start = data.priser[0];
+    const slutt = data.priser[data.priser.length - 1];
+    const positiv = slutt >= start;
+    const farge = positiv ? "#10b981" : "#ef4444";
+    const fargeLys = positiv ? "rgba(16,185,129,.12)" : "rgba(239,68,68,.12)";
+
+    if (aktivChart) { aktivChart.destroy(); aktivChart = null; }
+    const ctx = document.getElementById("detalj-chart").getContext("2d");
+    aktivChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: data.datoer,
+        datasets: [{
+          label: ticker,
+          data: data.priser,
+          borderColor: farge,
+          backgroundColor: fargeLys,
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: true,
+          tension: 0.3,
+        }]
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { display: false }, tooltip: {
+          backgroundColor: "#1a1d27", titleColor: "#e2e8f0",
+          bodyColor: "#94a3b8", borderColor: "#2e3350", borderWidth: 1,
+          callbacks: {
+            label: ctx => ` ${ctx.parsed.y.toFixed(2)}`
+          }
+        }},
+        scales: {
+          x: { ticks: { color: "#94a3b8", maxTicksLimit: 8, font: {size:11} }, grid: { color: "#2e3350" } },
+          y: { ticks: { color: "#94a3b8", font: {size:11} }, grid: { color: "#2e3350" } }
+        }
+      }
+    });
+
+    // Volum
+    const vCtx = document.getElementById("volum-chart");
+    if (vCtx) {
+      if (window._volumChart) { window._volumChart.destroy(); }
+      window._volumChart = new Chart(vCtx.getContext("2d"), {
+        type: "bar",
+        data: {
+          labels: data.datoer,
+          datasets: [{
+            label: "Volum",
+            data: data.volum,
+            backgroundColor: "rgba(59,130,246,.35)",
+            borderColor: "rgba(59,130,246,.7)",
+            borderWidth: 0,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false }, tooltip: {
+            backgroundColor: "#1a1d27", borderColor: "#2e3350", borderWidth: 1,
+            callbacks: { label: ctx => ` ${(ctx.parsed.y/1e6).toFixed(2)}M` }
+          }},
+          scales: {
+            x: { display: false },
+            y: { ticks: { color: "#94a3b8", font: {size:10},
+              callback: v => (v/1e6).toFixed(1)+"M" }, grid: { color: "#2e3350" } }
+          }
+        }
+      });
+    }
+  } catch (e) {
+    toast("Feil: " + e.message);
+  }
+}
+
+/* ── Sammenligning ───────────────────────────────────────────── */
+function byggSammenlignValg() {
+  const cont = document.getElementById("sammenlign-valg");
+  if (cont.innerHTML) return; // allerede bygget
+  cont.innerHTML = ALLE.map(a => `
+    <label>
+      <input type="checkbox" value="${a.ticker}" onchange="oppdaterSammenlign('${sammenlignPeriode}', null)">
+      <span>${a.flagg || ""} ${a.navn}</span>
+    </label>`).join("");
+  // Forhåndsvelg noen
+  const start = ["EQNR.OL", "AAPL", "IWDA.AS", "SPY"];
+  cont.querySelectorAll("input").forEach(cb => {
+    if (start.includes(cb.value)) cb.checked = true;
+  });
+  oppdaterSammenlign(sammenlignPeriode, null);
+}
+
+async function oppdaterSammenlign(periode, knapp) {
+  sammenlignPeriode = periode;
+  if (knapp) {
+    document.querySelectorAll("#sammenlign-periode .per-btn").forEach(b => b.classList.remove("active"));
+    knapp.classList.add("active");
+  }
+
+  const valgte = [...document.querySelectorAll("#sammenlign-valg input:checked")]
+    .map(cb => cb.value).slice(0, 6);
+
+  if (valgte.length === 0) return;
+
+  const ctx = document.getElementById("sammenlign-chart").getContext("2d");
+  if (sammenlignChart) { sammenlignChart.destroy(); sammenlignChart = null; }
+  ctx.canvas.parentNode.innerHTML = `<canvas id="sammenlign-chart"></canvas><div class="spinner" style="margin:30px auto"></div>`;
+
+  try {
+    const resp = await fetch(`/api/sammenlign/${encodeURIComponent(valgte.join(","))}/${periode}`);
+    const data = await resp.json();
+    const farger = ["#3b82f6","#10b981","#f59e0b","#ef4444","#a855f7","#ec4899"];
+    const datasets = Object.entries(data).map(([tk, d], i) => ({
+      label: d.navn,
+      data: d.norm,
+      borderColor: farger[i % farger.length],
+      backgroundColor: "transparent",
+      borderWidth: 2.5,
+      pointRadius: 0,
+      tension: 0.2,
+    }));
+    const datoer = datasets.length > 0 ? data[Object.keys(data)[0]].datoer : [];
+
+    document.querySelector("#tab-sammenlign .chart-wrap canvas")?.remove?.();
+    const wrap = document.querySelector("#tab-sammenlign .chart-wrap");
+    if (wrap) {
+      wrap.innerHTML = '<canvas id="sammenlign-chart"></canvas>';
+    }
+    const ny = document.getElementById("sammenlign-chart").getContext("2d");
+    sammenlignChart = new Chart(ny, {
+      type: "line",
+      data: { labels: datoer, datasets },
+      options: {
+        responsive: true,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { labels: { color: "#e2e8f0", font: {size:12} } },
+          tooltip: {
+            backgroundColor: "#1a1d27", titleColor: "#e2e8f0",
+            bodyColor: "#94a3b8", borderColor: "#2e3350", borderWidth: 1,
+            callbacks: {
+              label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}`
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { color: "#94a3b8", maxTicksLimit: 8, font:{size:11} }, grid: { color: "#2e3350" } },
+          y: { ticks: { color: "#94a3b8", font:{size:11},
+            callback: v => v.toFixed(0) }, grid: { color: "#2e3350" } }
+        }
+      }
+    });
+  } catch (e) {
+    toast("Feil: " + e.message);
+  }
+}
+
+/* ── Nyheter & sentiment-prognose ─────────────────────────────── */
+function settNyhetFilter(btn) {
+  nyhetFilter = btn.dataset.filter;
+  document.querySelectorAll("#tab-nyheter .filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  if (nyheterData) visNyheter();
+}
+
+async function lastNyheter(tving) {
+  if (nyheterData && !tving) { visNyheter(); return; }
+  const cont = document.getElementById("nyheter-innhold");
+  cont.innerHTML = `
+    <div style="text-align:center;padding:40px">
+      <div class="spinner"></div>
+      <div style="margin-top:12px;color:var(--muted);font-size:.85rem">Henter og analyserer nyheter for ${ALLE.length} instrumenter…</div>
+    </div>`;
+  try {
+    const resp = await fetch("/api/nyheter");
+    nyheterData = await resp.json();
+    visNyheter();
+  } catch (e) {
+    cont.innerHTML = `<p style="color:var(--danger)">Feil ved henting av nyheter: ${e.message}</p>`;
+  }
+}
+
+function fmtDato(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d)) return iso.substring(0, 10);
+  return d.toLocaleDateString("no-NO", {day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"});
+}
+
+function visHeteForslag() {
+  const cont = document.getElementById("hete-forslag");
+  const hete = nyheterData && nyheterData.hete ? nyheterData.hete : [];
+  if (hete.length === 0) {
+    cont.innerHTML = `
+      <div class="hete-wrap">
+        <div class="hete-tittel">🔥 Mest omtalte siste uke</div>
+        <div class="hete-tom">Ingen ferske saker funnet i feedene akkurat nå.</div>
+      </div>`;
+    return;
+  }
+  const kortHtml = hete.map((h, i) => {
+    const sak = h.topp_sak;
+    const sakHtml = sak
+      ? `<div class="hete-sak">${sak.url ? `<a href="${sak.url}" target="_blank" rel="noopener">${sak.tittel}</a>` : sak.tittel}
+           <div class="hete-meta">${sak.kilde || "?"} · score ${sak.score >= 0 ? "+" : ""}${sak.score}</div></div>`
+      : "";
+    return `
+      <div class="hete-kort">
+        <div class="hete-rank">#${i + 1} · ${h.ferske} ferske saker</div>
+        <div class="hete-navn">${h.flagg || ""} ${h.navn}</div>
+        <div class="hete-meta">${h.ticker} · snitt ${h.snitt_score >= 0 ? "+" : ""}${h.snitt_score} · <span class="${h.prognose.farge}">${h.prognose.tekst}</span></div>
+        ${sakHtml}
+      </div>`;
+  }).join("");
+  cont.innerHTML = `
+    <div class="hete-wrap">
+      <div class="hete-tittel">🔥 Mest omtalte siste uke — forslag til research</div>
+      <div class="hete-undertittel">Rangert etter antall ferske nyhetssaker. Ikke et kjøpsråd.</div>
+      <div class="hete-grid">${kortHtml}</div>
+    </div>`;
+}
+
+function visNyheter() {
+  if (!nyheterData) return;
+  visHeteForslag();
+  const instrumenter = nyheterData.instrumenter || [];
+  const filtrert = nyhetFilter === "alle"
+    ? instrumenter
+    : instrumenter.filter(d => d.type === nyhetFilter);
+  const cont = document.getElementById("nyheter-innhold");
+  if (filtrert.length === 0) {
+    cont.innerHTML = `<p class="nyhet-ingen">Ingen instrumenter i denne kategorien.</p>`;
+    return;
+  }
+  // Sorter: positiv øverst, så nøytral, så negativ
+  const sortert = [...filtrert].sort((a, b) => b.snitt_score - a.snitt_score);
+  cont.innerHTML = sortert.map(d => {
+    const total = Math.max(d.antall, 1);
+    const pPos = (d.positive / total) * 100;
+    const pNeg = (d.negative / total) * 100;
+    const pNeu = (d.nøytrale / total) * 100;
+
+    const sakerHtml = d.saker.length === 0
+      ? `<p class="nyhet-ingen">Ingen nyheter funnet for ${d.ticker}.</p>`
+      : d.saker.slice(0, 5).map(s => `
+          <div class="nyhet-sak ${s.etikett}">
+            <div style="flex:1">
+              ${s.url ? `<a href="${s.url}" target="_blank" rel="noopener">${s.tittel}</a>` : s.tittel}
+              <div class="nyhet-sak-meta">${s.kilde || "?"} · ${fmtDato(s.dato)} · score ${s.score >= 0 ? "+" : ""}${s.score}</div>
+            </div>
+          </div>`).join("");
+
+    return `
+      <div class="nyhet-kort">
+        <div class="nyhet-header">
+          <div class="nyhet-tittel-rad">
+            <div class="nyhet-tittel">${d.flagg || ""} ${d.navn}</div>
+            <div class="nyhet-ticker">${d.ticker}</div>
+          </div>
+          <div class="nyhet-prognose ${d.prognose.farge}">
+            ${d.prognose.tekst}
+            <div class="nyhet-score">snitt: ${d.snitt_score >= 0 ? "+" : ""}${d.snitt_score}</div>
+          </div>
+        </div>
+        ${d.antall > 0 ? `
+          <div class="sentiment-bar">
+            <div class="sb-pos" style="width:${pPos}%"></div>
+            <div class="sb-neu" style="width:${pNeu}%"></div>
+            <div class="sb-neg" style="width:${pNeg}%"></div>
+          </div>
+          <div class="nyhet-stats">
+            <span><strong>${d.antall}</strong> saker</span>
+            <span class="pos">▲ ${d.positive} positive</span>
+            <span class="neu">● ${d.nøytrale} nøytrale</span>
+            <span class="neg">▼ ${d.negative} negative</span>
+          </div>
+        ` : ""}
+        <div class="nyhet-saker">${sakerHtml}</div>
+      </div>`;
+  }).join("");
+}
+
+/* ── Prognose ────────────────────────────────────────────────── */
+function byggPrognoseValg() {
+  const sel = document.getElementById("prognose-ticker");
+  if (sel.options.length > 0) return; // allerede bygget
+  sel.innerHTML = ALLE.map(a =>
+    `<option value="${a.ticker}">${a.flagg || ""} ${a.navn} (${a.ticker})</option>`
+  ).join("");
+}
+
+function fmtBelop(v, valuta) {
+  if (v == null) return "–";
+  return v.toLocaleString("no-NO", {maximumFractionDigits: 0}) + (valuta ? " " + valuta : "");
+}
+
+async function beregnPrognose() {
+  const ticker = document.getElementById("prognose-ticker").value;
+  const belop = parseFloat(document.getElementById("prognose-belop").value) || 0;
+  const manedlig = parseFloat(document.getElementById("prognose-manedlig").value) || 0;
+  const resultat = document.getElementById("prognose-resultat");
+
+  if (!ticker) { toast("Velg et instrument"); return; }
+  if (belop <= 0 && manedlig <= 0) {
+    toast("Oppgi engangssum og/eller månedlig innskudd");
+    return;
+  }
+
+  resultat.innerHTML = '<div class="spinner"></div>';
+  try {
+    const resp = await fetch(`/api/prognose/${encodeURIComponent(ticker)}/${belop}/${manedlig}`);
+    const d = await resp.json();
+    if (d.feil) { resultat.innerHTML = `<p style="color:var(--danger)">⚠️ ${d.feil}</p>`; return; }
+
+    const valuta = d.valuta || "";
+    const kortHtml = d.prognoser.map(p => `
+      <div class="prognose-kort">
+        <div class="prognose-ar">Om ${p.ar} år</div>
+        <div class="prognose-forventet">${fmtBelop(p.forventet, valuta)}</div>
+        <div class="prognose-gevinst">
+          Innskutt: ${fmtBelop(p.innskudd, valuta)} ·
+          gevinst ${p.gevinst_forventet_pct > 0 ? "+" : ""}${p.gevinst_forventet_pct.toFixed(1)}%
+        </div>
+        <div class="prognose-rad lav"><span>Pessimistisk (5%)</span><strong>${fmtBelop(p.pessimistisk, valuta)}</strong></div>
+        <div class="prognose-rad hoy"><span>Optimistisk (95%)</span><strong>${fmtBelop(p.optimistisk, valuta)}</strong></div>
+      </div>
+    `).join("");
+
+    const sparing = d.manedlig > 0
+      ? `${fmtBelop(d.belop, valuta)} + ${fmtBelop(d.manedlig, valuta)}/mnd`
+      : `${fmtBelop(d.belop, valuta)} (engang)`;
+
+    resultat.innerHTML = `
+      <div class="prognose-stat">
+        <div class="nøkkel-kort">
+          <div class="nøkkel-label">Instrument</div>
+          <div class="nøkkel-verdi" style="font-size:.95rem">${d.flagg || ""} ${d.navn}</div>
+        </div>
+        <div class="nøkkel-kort">
+          <div class="nøkkel-label">Sparing</div>
+          <div class="nøkkel-verdi" style="font-size:.95rem">${sparing}</div>
+        </div>
+        <div class="nøkkel-kort">
+          <div class="nøkkel-label">Historisk CAGR</div>
+          <div class="nøkkel-verdi ${d.cagr_pct >= 0 ? 'pos' : 'neg'}">${d.cagr_pct >= 0 ? "+" : ""}${d.cagr_pct.toFixed(2)} %</div>
+        </div>
+        <div class="nøkkel-kort">
+          <div class="nøkkel-label">Årlig volatilitet</div>
+          <div class="nøkkel-verdi">${d.volatilitet_pct.toFixed(2)} %</div>
+        </div>
+        <div class="nøkkel-kort">
+          <div class="nøkkel-label">Basert på</div>
+          <div class="nøkkel-verdi">${d.historikk_ar} år historikk</div>
+        </div>
+      </div>
+      <div class="prognose-grid">${kortHtml}</div>
+    `;
+  } catch (e) {
+    resultat.innerHTML = `<p style="color:var(--danger)">Feil: ${e.message}</p>`;
+  }
+}
+
+/* ── Min portefølje ─────────────────────────────────────────── */
+function lesBeholdning() { return beholdningState || {}; }
+
+async function hentBeholdningFraServer() {
+  try {
+    const resp = await fetch("/api/beholdning");
+    beholdningState = await resp.json() || {};
+  } catch {
+    beholdningState = {};
+  }
+}
+
+function planlagtLagring() {
+  if (beholdningLagreTimer) clearTimeout(beholdningLagreTimer);
+  const indikator = document.getElementById("port-lagre-status");
+  if (indikator) indikator.textContent = "✏️ Endret…";
+  beholdningLagreTimer = setTimeout(async () => {
+    if (indikator) indikator.textContent = "💾 Lagrer…";
+    try {
+      const resp = await fetch("/api/beholdning", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(beholdningState),
+      });
+      const d = await resp.json();
+      if (d.feil) {
+        if (indikator) indikator.textContent = "⚠️ " + d.feil;
+      } else {
+        if (indikator) {
+          indikator.textContent = "✅ Lagret";
+          setTimeout(() => { if (indikator.textContent === "✅ Lagret") indikator.textContent = ""; }, 1500);
+        }
+      }
+    } catch (e) {
+      if (indikator) indikator.textContent = "⚠️ Lagring feilet";
+    }
+  }, 600);
+}
+
+async function lastPortefolje(tving) {
+  if (portefoljeData && !tving) { renderPortefolje(); return; }
+  const cont = document.getElementById("port-innhold");
+  cont.innerHTML = `<div style="text-align:center;padding:40px"><div class="spinner"></div>
+    <div style="margin-top:12px;color:var(--muted);font-size:.85rem">Henter porteføljedata…</div></div>`;
+  try {
+    await hentBeholdningFraServer();
+    const resp = await fetch("/api/portefolje");
+    portefoljeData = await resp.json();
+    renderPortefolje();
+    lastKorrelasjon();
+  } catch (e) {
+    cont.innerHTML = `<p style="color:var(--danger)">Feil ved henting: ${e.message}</p>`;
+  }
+}
+
+function renderPortefolje() {
+  if (!portefoljeData) return;
+  const cont = document.getElementById("port-innhold");
+  Object.values(portCharts).forEach(c => { try { c.destroy(); } catch {} });
+  portCharts = {};
+
+  cont.innerHTML = `<div class="port-grid">${portefoljeData.map(byggPortKort).join("")}</div>`;
+
+  // Lag sparkline-charts
+  portefoljeData.forEach(d => {
+    const cv = document.getElementById(`spark-${cssId(d.ticker)}`);
+    if (cv && d.priser && d.priser.length > 1) {
+      const farge = d.priser[d.priser.length - 1] >= d.priser[0]
+        ? getComputedStyle(document.documentElement).getPropertyValue("--accent2").trim() || "#22c55e"
+        : getComputedStyle(document.documentElement).getPropertyValue("--danger").trim() || "#ef4444";
+      portCharts[d.ticker] = new Chart(cv, {
+        type: "line",
+        data: { labels: d.datoer, datasets: [{
+          data: d.priser, borderColor: farge, borderWidth: 1.5,
+          fill: false, pointRadius: 0, tension: 0.25,
+        }]},
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          scales: { x: { display: false }, y: { display: false } },
+          animation: false,
+        }
+      });
+    }
+  });
+
+  oppdaterAlleBeregninger();
+}
+
+function cssId(ticker) { return ticker.replace(/[^a-zA-Z0-9]/g, "_"); }
+
+function byggPortKort(d) {
+  const beholdning = lesBeholdning();
+  const b = beholdning[d.ticker] || {};
+  const endring = d.endring_pct;
+  const cls = clsColor(endring);
+  const arrow = endring > 0 ? "▲" : endring < 0 ? "▼" : "●";
+  const avk1y = d.avk_1y_pct != null
+    ? `<span class="${clsColor(d.avk_1y_pct)}">${d.avk_1y_pct >= 0 ? "+" : ""}${d.avk_1y_pct.toFixed(1)}%</span>`
+    : "–";
+  const id = cssId(d.ticker);
+  const sakerHtml = (d.saker || []).slice(0, 3).map(s => `
+    <div class="port-sak-rad">
+      ${s.url ? `<a href="${s.url}" target="_blank" rel="noopener">${s.tittel}</a>` : s.tittel}
+      <div class="port-sak-meta">${s.kilde || "?"} · ${fmtDato(s.dato)} · score ${s.score >= 0 ? "+" : ""}${s.score}</div>
+    </div>`).join("") || `<div class="port-sak-rad" style="color:var(--muted);font-style:italic">Ingen ferske nyheter</div>`;
+
+  return `
+    <div class="port-kort">
+      <h3>${d.flagg || ""} ${d.navn}</h3>
+      <div class="port-ticker">${d.ticker} · ${d.sektor || ""}</div>
+      <div class="port-pris-rad">
+        <div class="port-pris">${d.pris_fmt || "–"}</div>
+        <div class="port-endring ${cls}">${arrow} ${fmtPct(endring)}</div>
+      </div>
+      <div class="port-avk1y">1Y: ${avk1y} · sentiment <span class="${d.prognose.farge}">${d.prognose.tekst}</span></div>
+      <div class="port-spark"><canvas id="spark-${id}"></canvas></div>
+      <div class="port-input-rad">
+        <div>
+          <label>Antall andeler</label>
+          <input type="number" step="any" min="0" id="and-${id}" value="${b.andeler ?? ""}"
+            oninput="oppdaterBeholdning('${d.ticker}', 'andeler', this.value)" placeholder="0">
+        </div>
+        <div>
+          <label>Snittpris (${d.valuta || "NOK"})</label>
+          <input type="number" step="any" min="0" id="snitt-${id}" value="${b.snittpris ?? ""}"
+            oninput="oppdaterBeholdning('${d.ticker}', 'snittpris', this.value)" placeholder="0">
+        </div>
+      </div>
+      <div class="port-beregn" id="beregn-${id}"></div>
+      <div class="port-saker-tittel">Siste nyheter</div>
+      ${sakerHtml}
+    </div>`;
+}
+
+function oppdaterBeholdning(ticker, felt, verdi) {
+  if (!beholdningState[ticker]) beholdningState[ticker] = {andeler: 0, snittpris: 0};
+  const v = parseFloat(verdi);
+  beholdningState[ticker][felt] = isNaN(v) ? 0 : v;
+  oppdaterBeregningForTicker(ticker);
+  oppdaterTotaler();
+  planlagtLagring();
+}
+
+function oppdaterBeregningForTicker(ticker) {
+  const d = portefoljeData.find(x => x.ticker === ticker);
+  if (!d) return;
+  const b = lesBeholdning()[ticker] || {};
+  const andeler = parseFloat(b.andeler) || 0;
+  const snittpris = parseFloat(b.snittpris) || 0;
+  const valuta = d.valuta || "NOK";
+  const el = document.getElementById(`beregn-${cssId(ticker)}`);
+  if (!el) return;
+
+  if (andeler <= 0) {
+    el.innerHTML = `<div style="color:var(--muted);font-style:italic">Skriv inn antall andeler for å se din verdi.</div>`;
+    return;
+  }
+  const naa = d.pris ? d.pris * andeler : 0;
+  const kostpris = snittpris * andeler;
+  const gevinst = naa - kostpris;
+  const gevPct = kostpris > 0 ? (gevinst / kostpris) * 100 : null;
+  const gevCls = gevinst > 0 ? "pos" : gevinst < 0 ? "neg" : "neu";
+
+  el.innerHTML = `
+    <div class="port-beregn-rad"><span class="label">Nåværende verdi</span>
+      <span class="val">${fmtBelop(naa, valuta)}</span></div>
+    ${kostpris > 0 ? `
+    <div class="port-beregn-rad"><span class="label">Kostpris</span>
+      <span class="val">${fmtBelop(kostpris, valuta)}</span></div>
+    <div class="port-beregn-rad"><span class="label">Gevinst</span>
+      <span class="val ${gevCls}">${gevinst >= 0 ? "+" : ""}${fmtBelop(gevinst, valuta)}${gevPct != null ? ` (${gevPct >= 0 ? "+" : ""}${gevPct.toFixed(1)}%)` : ""}</span></div>
+    ` : ""}`;
+}
+
+function oppdaterAlleBeregninger() {
+  if (!portefoljeData) return;
+  portefoljeData.forEach(d => oppdaterBeregningForTicker(d.ticker));
+  oppdaterTotaler();
+}
+
+function oppdaterTotaler() {
+  if (!portefoljeData) return;
+  const beholdning = lesBeholdning();
+  let total = 0, kostTotal = 0, valuta = "NOK";
+  portefoljeData.forEach(d => {
+    const b = beholdning[d.ticker] || {};
+    const andeler = parseFloat(b.andeler) || 0;
+    const snittpris = parseFloat(b.snittpris) || 0;
+    if (andeler > 0 && d.pris) {
+      total += d.pris * andeler;
+      kostTotal += snittpris * andeler;
+      valuta = d.valuta || valuta;
+    }
+  });
+  const totalEl = document.getElementById("port-total");
+  const gevEl = document.getElementById("port-gevinst");
+  if (total > 0) {
+    totalEl.textContent = ` ${fmtBelop(total, valuta)}`;
+    if (kostTotal > 0) {
+      const gevinst = total - kostTotal;
+      const gevPct = (gevinst / kostTotal) * 100;
+      const cls = gevinst >= 0 ? "gev-pos" : "gev-neg";
+      gevEl.innerHTML = `<span class="${cls}">${gevinst >= 0 ? "+" : ""}${fmtBelop(gevinst, valuta)} (${gevPct >= 0 ? "+" : ""}${gevPct.toFixed(1)}%)</span>`;
+    } else {
+      gevEl.textContent = "";
+    }
+  } else {
+    totalEl.textContent = " – (legg inn andeler under)";
+    gevEl.textContent = "";
+  }
+}
+
+/* ── Risiko-panel ────────────────────────────────────────────── */
+let risikoDdChart = null;
+let benchChart = null;
+
+function fmtN(v, suffix = "", desimaler = 2) {
+  if (v == null || isNaN(v)) return "–";
+  return `${v.toFixed(desimaler)}${suffix}`;
+}
+
+function sharpeKlasse(s) {
+  if (s == null) return "neu";
+  if (s >= 1.0) return "pos";
+  if (s >= 0.5) return "neu";
+  return "neg";
+}
+
+function sharpeHint(s) {
+  if (s == null) return "–";
+  if (s >= 1.0) return "Sterk";
+  if (s >= 0.5) return "OK";
+  if (s >= 0)   return "Svak";
+  return "Tap";
+}
+
+async function lastRisiko(ticker, periode) {
+  const panel = document.getElementById("risiko-panel");
+  if (!panel) return;
+  panel.innerHTML = `<div class="risiko-wrap"><div class="risiko-tittel">📊 Risiko & innsikt</div>
+    <div style="color:var(--muted);font-size:.8rem">Beregner…</div></div>`;
+  try {
+    const resp = await fetch(`/api/risiko/${encodeURIComponent(ticker)}/${periode}`);
+    const d = await resp.json();
+    if (d.feil) {
+      panel.innerHTML = `<div class="risiko-wrap"><div class="risiko-tittel">📊 Risiko & innsikt</div>
+        <div style="color:var(--muted);font-size:.8rem">${d.feil}</div></div>`;
+      return;
+    }
+    renderRisikoPanel(d);
+  } catch (e) {
+    panel.innerHTML = `<div class="risiko-wrap"><div style="color:var(--muted)">Kunne ikke laste risikodata: ${e.message}</div></div>`;
+  }
+}
+
+function renderRisikoPanel(d) {
+  const r = d.risiko;
+  const sk = sharpeKlasse(r.sharpe);
+  const ma = d.ma_signal === "over"
+    ? `<span class="pos">↑ over</span>`
+    : d.ma_signal === "under" ? `<span class="neg">↓ under</span>`
+    : `<span class="neu">–</span>`;
+
+  const ddCls = r.max_drawdown_pct <= -30 ? "neg" : r.max_drawdown_pct <= -15 ? "neu" : "pos";
+  const cagrCls = r.cagr_pct >= 0 ? "pos" : "neg";
+
+  let benchHtml = "";
+  if (d.bench) {
+    const b = d.bench;
+    const diffCls = b.diff_pct >= 0 ? "pos" : "neg";
+    const diffSign = b.diff_pct >= 0 ? "+" : "";
+    benchHtml = `
+      <div class="bench-info">
+        Mot benchmark <strong>${b.navn}</strong>:
+        <span class="${diffCls}">${diffSign}${b.diff_pct.toFixed(2)} %-poeng</span> over perioden
+      </div>
+      <div class="chart-wrap" style="height:220px;margin-bottom:0">
+        <canvas id="bench-chart"></canvas>
+      </div>`;
+  }
+
+  document.getElementById("risiko-panel").innerHTML = `
+    <div class="risiko-wrap">
+      <div class="risiko-tittel">📊 Risiko & innsikt — ${d.periode}</div>
+      <div class="risiko-undertittel">
+        Beregnet på daglige log-avkastninger. Sharpe forutsetter ${d.risikofri_rente_pct}% risikofri rente.
+      </div>
+      <div class="risiko-grid">
+        <div class="risiko-kort ${cagrCls}">
+          <div class="label">Årlig avkastning (CAGR)</div>
+          <div class="verdi">${fmtN(r.cagr_pct, "%")}</div>
+          <div class="hint">Total: ${fmtN(r.total_avk_pct, "%")}</div>
+        </div>
+        <div class="risiko-kort">
+          <div class="label">Volatilitet (årlig)</div>
+          <div class="verdi">${fmtN(r.vol_pct, "%")}</div>
+          <div class="hint">Hvor mye prisen svinger</div>
+        </div>
+        <div class="risiko-kort ${sk}">
+          <div class="label">Sharpe-ratio</div>
+          <div class="verdi">${fmtN(r.sharpe)}</div>
+          <div class="hint">${sharpeHint(r.sharpe)} — avkastning per risiko</div>
+        </div>
+        <div class="risiko-kort ${ddCls}">
+          <div class="label">Maks drawdown</div>
+          <div class="verdi">${fmtN(r.max_drawdown_pct, "%")}</div>
+          <div class="hint">Verste fall fra topp</div>
+        </div>
+        <div class="risiko-kort">
+          <div class="label">Tid i drawdown</div>
+          <div class="verdi">${r.tid_i_dd_dager}</div>
+          <div class="hint">handelsdager under forrige topp</div>
+        </div>
+        <div class="risiko-kort">
+          <div class="label">Pris vs 200d-snitt</div>
+          <div class="verdi">${ma}</div>
+          <div class="hint">200d: ${d.snitt_200d || "–"}</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:160px;margin-bottom:0">
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:6px">Drawdown over tid (% under forrige topp)</div>
+        <canvas id="risiko-dd-chart"></canvas>
+      </div>
+      ${benchHtml}
+    </div>`;
+
+  // Drawdown-chart
+  if (risikoDdChart) { try { risikoDdChart.destroy(); } catch {} risikoDdChart = null; }
+  const ddCtx = document.getElementById("risiko-dd-chart");
+  if (ddCtx) {
+    risikoDdChart = new Chart(ddCtx.getContext("2d"), {
+      type: "line",
+      data: {
+        labels: r.drawdown_datoer,
+        datasets: [{
+          data: r.drawdown_serie,
+          borderColor: "#ef4444",
+          backgroundColor: "rgba(239,68,68,.15)",
+          borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.2,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: {
+          callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(1)}%` }
+        }},
+        scales: {
+          x: { ticks: { color: "#94a3b8", maxTicksLimit: 6, font: {size:10} }, grid: { color: "#2e3350" } },
+          y: { ticks: { color: "#94a3b8", font: {size:10}, callback: v => v + "%" },
+               grid: { color: "#2e3350" }, max: 0 }
+        }
+      }
+    });
+  }
+
+  // Bench-chart
+  if (benchChart) { try { benchChart.destroy(); } catch {} benchChart = null; }
+  if (d.bench) {
+    const bCtx = document.getElementById("bench-chart");
+    if (bCtx) {
+      benchChart = new Chart(bCtx.getContext("2d"), {
+        type: "line",
+        data: {
+          labels: d.bench.datoer,
+          datasets: [
+            { label: d.navn, data: d.bench.instrument,
+              borderColor: "#3b82f6", borderWidth: 2, pointRadius: 0, tension: 0.25, fill: false },
+            { label: d.bench.navn, data: d.bench.bench,
+              borderColor: "#94a3b8", borderWidth: 1.5, pointRadius: 0, tension: 0.25, fill: false, borderDash: [4,4] },
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: true, labels: { color: "#e2e8f0", font: {size: 11} } },
+                     tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}` } } },
+          scales: {
+            x: { ticks: { color: "#94a3b8", maxTicksLimit: 6, font: {size:10} }, grid: { color: "#2e3350" } },
+            y: { ticks: { color: "#94a3b8", font: {size:10} }, grid: { color: "#2e3350" } }
+          }
+        }
+      });
+    }
+  }
+}
+
+/* ── Markedstemperatur ───────────────────────────────────────── */
+async function lastMarkedstemp() {
+  const bar = document.getElementById("marked-bar");
+  try {
+    const resp = await fetch("/api/marked");
+    const d = await resp.json();
+    if (!d.instrumenter || d.instrumenter.length === 0) {
+      bar.style.display = "none";
+      return;
+    }
+    bar.style.display = "flex";
+    const stem = d.stemning || {};
+    const stemCls = stem.farge || "neu";
+    bar.innerHTML = `
+      <div class="marked-stemning ${stemCls}" title="Basert på VIX-nivå">
+        🌡️ ${stem.tekst || "–"}${stem.nivå != null ? ` (VIX ${stem.nivå.toFixed(1)})` : ""}
+      </div>
+      ${d.instrumenter.map(i => `
+        <div class="marked-item" title="${i.kategori} — 1u: ${fmtPct(i.endring_1u)}">
+          <span class="navn">${i.navn}</span>
+          <span class="verdi">${i.verdi.toLocaleString("no-NO", {maximumFractionDigits: 2})}</span>
+          <span class="endring ${clsColor(i.endring_1d)}">${fmtPct(i.endring_1d)}</span>
+        </div>`).join("")}
+    `;
+  } catch (e) {
+    bar.style.display = "none";
+  }
+}
+
+/* ── Korrelasjonsmatrise ─────────────────────────────────────── */
+function korrFarge(v) {
+  // -1 (rød) → 0 (transparent) → +1 (grønn). Bruk vekt på 0.5 for synlighet.
+  if (v >= 0) {
+    const alpha = Math.min(0.85, v * 0.85);
+    return `rgba(16,185,129,${alpha})`;
+  }
+  const alpha = Math.min(0.85, -v * 0.85);
+  return `rgba(239,68,68,${alpha})`;
+}
+
+async function lastKorrelasjon() {
+  const cont = document.getElementById("port-korrelasjon");
+  if (!cont) return;
+  cont.innerHTML = `<div class="korr-wrap"><div class="korr-tittel">🔗 Korrelasjon mellom dine fond</div>
+    <div style="color:var(--muted);font-size:.8rem">Beregner…</div></div>`;
+  try {
+    const resp = await fetch("/api/korrelasjon?periode=1Y");
+    const d = await resp.json();
+    if (d.feil) {
+      cont.innerHTML = `<div class="korr-wrap"><div class="korr-tittel">🔗 Korrelasjon</div>
+        <div style="color:var(--muted);font-size:.8rem">${d.feil}</div></div>`;
+      return;
+    }
+    renderKorrelasjon(d, cont);
+  } catch (e) {
+    cont.innerHTML = "";
+  }
+}
+
+function renderKorrelasjon(d, cont) {
+  const headerRad = `<tr><th></th>${d.navn.map(n => `<th>${n}</th>`).join("")}</tr>`;
+  const rader = d.matrise.map((rad, i) => `
+    <tr>
+      <td class="label">${d.navn[i]}</td>
+      ${rad.map((v, j) => `<td class="korr-celle" style="background:${korrFarge(v)}" title="${d.navn[i]} vs ${d.navn[j]}">${v.toFixed(2)}</td>`).join("")}
+    </tr>`).join("");
+
+  // Snittkorrelasjon utenom diagonalen — godt mål på diversifisering.
+  let sum = 0, n = 0;
+  d.matrise.forEach((rad, i) => rad.forEach((v, j) => { if (i !== j) { sum += v; n++; } }));
+  const snitt = n > 0 ? sum / n : 0;
+  const tolkning = snitt > 0.85 ? "veldig høy — fondene beveger seg nesten i takt, lite diversifisering"
+    : snitt > 0.7 ? "høy — betydelig overlapp i risikoeksponering"
+    : snitt > 0.5 ? "moderat — noe diversifisering"
+    : "lav — god diversifisering";
+
+  cont.innerHTML = `
+    <div class="korr-wrap">
+      <div class="korr-tittel">🔗 Korrelasjon mellom dine fond</div>
+      <div class="korr-undertittel">
+        Daglige avkastninger siste år (${d.antall_dager} dager). 1.00 = beveger seg helt i takt. Gjennomsnitt utenom diagonalen: <strong>${snitt.toFixed(2)}</strong> — ${tolkning}.
+      </div>
+      <table class="korr-tabell">
+        <thead>${headerRad}</thead>
+        <tbody>${rader}</tbody>
+      </table>
+      <div style="font-size:.7rem;color:var(--muted);margin-top:10px;font-style:italic">
+        Høy korrelasjon (>0.8) betyr at fondene faller og stiger sammen — diversifiseringsgevinsten er liten. Vurder å supplere med noe som korrelerer lavere (f.eks. renter, råvarer eller andre regioner).
+      </div>
+    </div>`;
+}
+
+/* ── Kalkulator ──────────────────────────────────────────────── */
+let kalkBeregneTimer = null;
+let kalkChartBane = null;
+let kalkChartHist = null;
+let kalkChartVekter = null;
+let kalkPortefoljeStats = null;
+
+function kalkFmtKr(v) {
+  if (v == null || isNaN(v)) return "–";
+  return Math.round(v).toLocaleString("no-NO") + " kr";
+}
+
+function kalkOppdater(debounce) {
+  document.getElementById("kalk-start-aksje-v").textContent = document.getElementById("kalk-start-aksje").value + "%";
+  document.getElementById("kalk-slutt-aksje-v").textContent = document.getElementById("kalk-slutt-aksje").value + "%";
+  document.getElementById("kalk-hold-aar-v").textContent   = document.getElementById("kalk-hold-aar").value;
+
+  clearTimeout(kalkBeregneTimer);
+  kalkBeregneTimer = setTimeout(kalkKjor, debounce ? 350 : 0);
+}
+
+async function kalkKjor() {
+  const body = {
+    start:       Number(document.getElementById("kalk-start").value),
+    manedlig:    Number(document.getElementById("kalk-manedlig").value),
+    ar:          Number(document.getElementById("kalk-ar").value),
+    mal:         Number(document.getElementById("kalk-mal").value),
+    start_aksje: Number(document.getElementById("kalk-start-aksje").value) / 100,
+    slutt_aksje: Number(document.getElementById("kalk-slutt-aksje").value) / 100,
+    hold_aar:    Number(document.getElementById("kalk-hold-aar").value),
+    sjokk:       document.getElementById("kalk-sjokk").checked,
+    aksje_cagr:  Number(document.getElementById("kalk-aksje-cagr").value) / 100,
+    aksje_vol:   Number(document.getElementById("kalk-aksje-vol").value) / 100,
+    rente_cagr:  Number(document.getElementById("kalk-rente-cagr").value) / 100,
+    rente_vol:   Number(document.getElementById("kalk-rente-vol").value) / 100,
+  };
+
+  try {
+    const resp = await fetch("/api/kalkulator", {
+      method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)
+    });
+    const d = await resp.json();
+    if (d.feil) {
+      document.getElementById("kalk-resultat").innerHTML = `<div style="color:var(--danger);padding:20px">${d.feil}</div>`;
+      return;
+    }
+    kalkRender(d);
+  } catch (e) {
+    document.getElementById("kalk-resultat").innerHTML = `<div style="color:var(--danger);padding:20px">Feil: ${e.message}</div>`;
+  }
+}
+
+function kalkRender(d) {
+  const s = d.stats;
+  const mal = d.input.mal;
+  const sannsBar = (p) => `<div style="width:${Math.min(100, p)}%"></div>`;
+
+  document.getElementById("kalk-resultat").innerHTML = `
+    <div class="kalk-stats">
+      <div class="kalk-stat-kort pess">
+        <div class="label">Pessimistisk (P5)</div>
+        <div class="verdi">${kalkFmtKr(s.pessimistisk)}</div>
+      </div>
+      <div class="kalk-stat-kort">
+        <div class="label">Median (50/50)</div>
+        <div class="verdi">${kalkFmtKr(s.median)}</div>
+      </div>
+      <div class="kalk-stat-kort opt">
+        <div class="label">Optimistisk (P95)</div>
+        <div class="verdi">${kalkFmtKr(s.optimistisk)}</div>
+      </div>
+      <div class="kalk-stat-kort">
+        <div class="label">Totalt innskutt</div>
+        <div class="verdi">${kalkFmtKr(d.innskudd)}</div>
+      </div>
+    </div>
+
+    <div class="kalk-sanns-bar">
+      <div class="kalk-sanns-tittel">Sannsynlighet for å nå mål (${kalkFmtKr(mal)})</div>
+      <div class="kalk-sanns-rad">
+        <span class="lab">≥ 100% mål</span>
+        <span class="meter">${sannsBar(s.p_mal)}</span>
+        <span class="pct">${s.p_mal}%</span>
+      </div>
+      <div class="kalk-sanns-rad">
+        <span class="lab">≥ 80% mål</span>
+        <span class="meter">${sannsBar(s.p_80pct)}</span>
+        <span class="pct">${s.p_80pct}%</span>
+      </div>
+      <div class="kalk-sanns-rad">
+        <span class="lab">≥ 50% mål</span>
+        <span class="meter">${sannsBar(s.p_50pct)}</span>
+        <span class="pct">${s.p_50pct}%</span>
+      </div>
+    </div>
+
+    <div class="kalk-chart-wrap">
+      <div class="kalk-chart-tittel">Median-bane (forventet vekst over tid)</div>
+      <canvas id="kalk-bane-chart"></canvas>
+    </div>
+
+    <div class="kalk-chart-wrap">
+      <div class="kalk-chart-tittel">Aksjeandel over tid</div>
+      <canvas id="kalk-vekter-chart"></canvas>
+    </div>
+
+    <div class="kalk-chart-wrap">
+      <div class="kalk-chart-tittel">Fordeling av sluttverdier (rød linje = mål)</div>
+      <canvas id="kalk-hist-chart"></canvas>
+    </div>`;
+
+  // Bane-chart
+  if (kalkChartBane) { try { kalkChartBane.destroy(); } catch {} }
+  const baneLbl = d.median_bane.map((_, i) => `${(i/12).toFixed(1)}å`);
+  kalkChartBane = new Chart(document.getElementById("kalk-bane-chart").getContext("2d"), {
+    type: "line",
+    data: {
+      labels: baneLbl,
+      datasets: [
+        { label: "Median verdi", data: d.median_bane, borderColor: "#3b82f6",
+          backgroundColor: "rgba(59,130,246,.12)", borderWidth: 2, pointRadius: 0, fill: true, tension: 0.2 },
+        { label: "Mål", data: Array(d.median_bane.length).fill(mal),
+          borderColor: "#10b981", borderWidth: 1.5, borderDash: [4,4], pointRadius: 0, fill: false },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: "#e2e8f0", font:{size:11} } },
+                 tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${kalkFmtKr(ctx.parsed.y)}` } } },
+      scales: {
+        x: { ticks: { color: "#94a3b8", maxTicksLimit: 8, font:{size:10} }, grid: { color: "#2e3350" } },
+        y: { ticks: { color: "#94a3b8", font:{size:10}, callback: v => (v/1000).toFixed(0) + "k" },
+             grid: { color: "#2e3350" } }
+      }
+    }
+  });
+
+  // Vekter-chart
+  if (kalkChartVekter) { try { kalkChartVekter.destroy(); } catch {} }
+  kalkChartVekter = new Chart(document.getElementById("kalk-vekter-chart").getContext("2d"), {
+    type: "line",
+    data: {
+      labels: d.vekter.map((_, i) => `${((i+1)/12).toFixed(1)}å`),
+      datasets: [
+        { label: "Aksjer", data: d.vekter.map(v => v*100),
+          borderColor: "#3b82f6", backgroundColor: "rgba(59,130,246,.25)",
+          borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0 },
+        { label: "Renter", data: d.vekter.map(v => (1-v)*100),
+          borderColor: "#10b981", backgroundColor: "rgba(16,185,129,.25)",
+          borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: "#e2e8f0", font:{size:11} } } },
+      scales: {
+        x: { ticks: { color: "#94a3b8", maxTicksLimit: 8, font:{size:10} }, grid: { color: "#2e3350" } },
+        y: { stacked: true, max: 100, ticks: { color: "#94a3b8", font:{size:10}, callback: v => v + "%" },
+             grid: { color: "#2e3350" } }
+      }
+    }
+  });
+
+  // Histogram med målmarkering
+  if (kalkChartHist) { try { kalkChartHist.destroy(); } catch {} }
+  const h = d.histogram;
+  const senterX = h.kanter.slice(0, -1).map((e, i) => (e + h.kanter[i+1]) / 2);
+  kalkChartHist = new Chart(document.getElementById("kalk-hist-chart").getContext("2d"), {
+    type: "bar",
+    data: {
+      labels: senterX.map(v => kalkFmtKr(v)),
+      datasets: [{
+        data: h.antall,
+        backgroundColor: senterX.map(v => v >= mal ? "rgba(16,185,129,.65)" : "rgba(59,130,246,.55)"),
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { title: ctx => `Sluttverdi: ${ctx[0].label}`, label: ctx => ` ${ctx.parsed.y} av 20 000 simuleringer` } }
+      },
+      scales: {
+        x: { ticks: { color: "#94a3b8", maxTicksLimit: 8, font:{size:10},
+                       callback: function(val) { const v = senterX[val]; return v != null ? (v/1000).toFixed(0)+"k" : ""; }
+                     }, grid: { display: false } },
+        y: { ticks: { color: "#94a3b8", font:{size:10} }, grid: { color: "#2e3350" } }
+      }
+    }
+  });
+}
+
+async function kalkResetPortefolje() {
+  try {
+    const resp = await fetch("/api/portefolje-stats");
+    const d = await resp.json();
+    if (d.feil) { toast("Kunne ikke hente portefølje-stats"); return; }
+    document.getElementById("kalk-aksje-vol").value = (d.aksje_vol * 100).toFixed(1);
+    toast(`Vol oppdatert: ${(d.aksje_vol*100).toFixed(1)}% (din portefølje, ${d.dager} dager)`);
+    kalkOppdater(false);
+  } catch (e) {
+    toast("Feil: " + e.message);
+  }
+}
+
+/* ── Mine instrumenter ───────────────────────────────────────── */
+let instrumenterData = null;
+
+async function lastInstrumenter() {
+  try {
+    const resp = await fetch("/api/instrumenter");
+    instrumenterData = await resp.json();
+    renderInstrumenter();
+  } catch (e) {
+    document.getElementById("inst-tbody").innerHTML =
+      `<tr><td colspan="8" style="color:var(--danger);padding:20px">Feil: ${e.message}</td></tr>`;
+  }
+}
+
+function renderInstrumenter() {
+  if (!instrumenterData) return;
+  const tbody = document.getElementById("inst-tbody");
+  if (instrumenterData.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--muted)">Ingen instrumenter. Legg til ditt første over.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = instrumenterData.map(i => `
+    <tr>
+      <td>${i.flagg || ""}</td>
+      <td><strong>${i.navn}</strong></td>
+      <td style="color:var(--muted);font-family:monospace;font-size:.78rem">${i.ticker}</td>
+      <td><span class="inst-badge ${i.type}">${i.type === "fond" ? "ETF/Fond" : "Aksje"}</span></td>
+      <td style="color:var(--muted)">${i.sektor || "–"}</td>
+      <td><span class="inst-badge ${i.brukerlagt ? "bruker" : "standard"}">${i.brukerlagt ? "Egen" : "Standard"}</span></td>
+      <td class="center">
+        <input type="checkbox" ${i.i_portefolje ? "checked" : ""}
+               onchange="instToggleIPortefolje('${i.ticker}', this.checked)">
+      </td>
+      <td>
+        <button class="inst-slett" ${i.brukerlagt ? "" : "disabled title='Standard-instrument kan ikke slettes'"}
+                onclick="instSlett('${i.ticker}')">Slett</button>
+      </td>
+    </tr>`).join("");
+}
+
+async function instSjekkTicker() {
+  const ticker = document.getElementById("inst-ticker").value.trim();
+  if (!ticker) { toast("Skriv inn en ticker først"); return; }
+  toast(`🔍 Sjekker ${ticker}...`);
+  try {
+    const resp = await fetch(`/api/instrumenter/sjekk/${encodeURIComponent(ticker)}`);
+    if (!resp.ok) {
+      const d = await resp.json();
+      toast(`⚠️ ${d.feil || "Ikke funnet"}`);
+      return;
+    }
+    const d = await resp.json();
+    document.getElementById("inst-navn").value = d.navn || ticker;
+    document.getElementById("inst-sektor").value = d.sektor || "";
+    document.getElementById("inst-type").value = d.type_hint || "aksje";
+    toast(`✓ Funnet: ${d.navn}`);
+  } catch (e) {
+    toast("Feil: " + e.message);
+  }
+}
+
+async function instLeggTil() {
+  const ticker = document.getElementById("inst-ticker").value.trim();
+  const navn = document.getElementById("inst-navn").value.trim();
+  const type = document.getElementById("inst-type").value;
+  const sektor = document.getElementById("inst-sektor").value.trim();
+  const flagg = document.getElementById("inst-flagg").value.trim();
+
+  if (!ticker) { toast("Ticker mangler"); return; }
+  if (!navn) { toast("Navn mangler — klikk Sjekk for å auto-fylle"); return; }
+
+  try {
+    const resp = await fetch("/api/instrumenter", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ticker, navn, type, sektor: sektor || "–", flagg, søkeord: [navn]}),
+    });
+    const d = await resp.json();
+    if (!resp.ok) { toast("⚠️ " + (d.feil || "Feil")); return; }
+    toast(`✓ La til ${ticker}`);
+
+    // Reset form
+    ["inst-ticker","inst-navn","inst-sektor","inst-flagg"].forEach(id => document.getElementById(id).value = "");
+
+    // Refresh: instrumenter + oversikt + portefølje (alle bruker den nye katalogen)
+    await lastInstrumenter();
+    invalidateAndReload();
+  } catch (e) {
+    toast("Feil: " + e.message);
+  }
+}
+
+async function instSlett(ticker) {
+  if (!confirm(`Slett ${ticker}? Beholdning-data for denne tickeren forsvinner også.`)) return;
+  try {
+    const resp = await fetch(`/api/instrumenter/${encodeURIComponent(ticker)}`, {method: "DELETE"});
+    const d = await resp.json();
+    if (!resp.ok) { toast("⚠️ " + (d.feil || "Feil")); return; }
+    toast(`✓ Slettet ${ticker}`);
+    await lastInstrumenter();
+    invalidateAndReload();
+  } catch (e) {
+    toast("Feil: " + e.message);
+  }
+}
+
+async function instToggleIPortefolje(ticker, checked) {
+  // Beregn ny portefølje basert på alle krysse-bokser
+  const nye = instrumenterData
+    .map(i => i.ticker === ticker ? {...i, i_portefolje: checked} : i)
+    .filter(i => i.i_portefolje)
+    .map(i => i.ticker);
+  try {
+    const resp = await fetch("/api/portefolje-tickere", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(nye),
+    });
+    const d = await resp.json();
+    if (!resp.ok) { toast("⚠️ " + (d.feil || "Feil")); return; }
+    // Oppdater lokal state
+    instrumenterData = instrumenterData.map(i => ({...i, i_portefolje: d.portefolje.includes(i.ticker)}));
+    invalidateAndReload();
+  } catch (e) {
+    toast("Feil: " + e.message);
+  }
+}
+
+function invalidateAndReload() {
+  // Tving omlasting av oversikt, portefølje og kalkulator-default
+  alleData = [];
+  portefoljeData = null;
+  nyheterData = null;
+  lastAllData();
+}
+
+/* ── Start ───────────────────────────────────────────────────── */
+document.addEventListener("DOMContentLoaded", () => {
+  lastAllData();
+  lastPortefolje(false);
+  lastMarkedstemp();
+});
+</script>
+</body>
+</html>

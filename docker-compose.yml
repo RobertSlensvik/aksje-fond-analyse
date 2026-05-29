@@ -1,0 +1,18 @@
+services:
+  analyse:
+    build: .
+    container_name: aksje-fond-analyse
+    ports:
+      - "5001:5001"
+    volumes:
+      # Bind-mount data/-katalogen for persistens. Katalog-mount er nødvendig
+      # fordi enkeltfil-mount blokkerer os.replace() (atomic rename) på macOS.
+      # data/ opprettes automatisk hvis den ikke finnes.
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as r; r.urlopen('http://localhost:5001/').close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
