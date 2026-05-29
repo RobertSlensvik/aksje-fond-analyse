@@ -80,6 +80,16 @@
     .card-meta { margin-top: 12px; display: flex; gap: 12px; flex-wrap: wrap; }
     .meta-item { font-size: .75rem; color: var(--muted); }
     .meta-item strong { color: var(--text); display: block; font-size: .8rem; }
+    .card-avk {
+      margin-top: 12px; display: grid; grid-template-columns: repeat(6, 1fr);
+      gap: 4px; border-top: 1px solid var(--border); padding-top: 10px;
+    }
+    .avk-celle { text-align: center; }
+    .avk-celle .periode {
+      font-size: .62rem; color: var(--muted); text-transform: uppercase; letter-spacing: .02em;
+    }
+    .avk-celle .verdi { font-size: .72rem; font-weight: 700; margin-top: 2px; }
+    @media (max-width: 360px) { .card-avk { grid-template-columns: repeat(3, 1fr); } }
     .loading-card { color: var(--muted); font-size: .85rem; animation: pulse 1.5s ease-in-out infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
@@ -440,6 +450,7 @@
     .kalk-chart-wrap { margin-bottom: 14px; }
     .kalk-chart-wrap canvas { max-height: 200px; }
     .kalk-chart-tittel { font-size: .75rem; color: var(--muted); margin-bottom: 6px; }
+    .skatt-toggle { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
 
     /* ── Mine instrumenter ── */
     .inst-form {
@@ -482,6 +493,7 @@
     .inst-tabell tr:last-child td { border-bottom: none; }
     .inst-tabell tr:hover { background: rgba(59,130,246,.04); }
     .inst-tabell td.center { text-align: center; }
+    .inst-tabell .num { text-align: right; white-space: nowrap; }
     .inst-badge {
       font-size: .65rem; padding: 2px 8px; border-radius: 99px;
       font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
@@ -548,11 +560,13 @@
   <!-- Tabs -->
   <div class="tabs">
     <button class="tab-btn active" onclick="byttTab('portefolje', this)">💼 Min portefølje</button>
+    <button class="tab-btn" onclick="byttTab('rapport', this)">📋 Rapport</button>
     <button class="tab-btn" onclick="byttTab('oversikt', this)">📊 Oversikt</button>
     <button class="tab-btn" onclick="byttTab('nyheter', this)">📰 Nyheter</button>
     <button class="tab-btn" onclick="byttTab('sammenlign', this)">⚖️ Sammenlign</button>
     <button class="tab-btn" onclick="byttTab('prognose', this)">💰 Prognose</button>
     <button class="tab-btn" onclick="byttTab('kalkulator', this)">🧮 Kalkulator</button>
+    <button class="tab-btn" onclick="byttTab('skatt', this)">🧾 Skatt</button>
     <button class="tab-btn" onclick="byttTab('instrumenter', this)">⚙️ Mine instrumenter</button>
   </div>
 
@@ -580,6 +594,23 @@
     <p style="font-size:.72rem;color:var(--muted);margin-top:18px;font-style:italic">
       Antall andeler og snittpris lagres i <code>beholdning.json</code> i prosjektmappen — overlever browser-bytte og cache-tømming. Kursdata kan være forsinket inntil 15 min.
     </p>
+  </div>
+
+  <!-- RAPPORT -->
+  <div id="tab-rapport" class="tab-content">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:10px">
+      <h2 style="font-size:1.1rem">📋 Månedsrapport</h2>
+      <button class="btn" onclick="lastRapport()">🔄 Oppdater</button>
+    </div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:18px;line-height:1.6">
+      Hvordan porteføljen din gikk <strong>forrige kalendermåned</strong>, og utviklingen de <strong>siste 7 dagene</strong>.
+      Avkastning er prisavkastning i instrumentets valuta. Har du registrert beholdning, vektes totalen etter markedsverdi og kroner vises.
+    </p>
+    <div id="rapport-innhold">
+      <div style="text-align:center;padding:40px"><div class="spinner"></div>
+        <div style="margin-top:12px;color:var(--muted);font-size:.85rem">Henter rapport…</div>
+      </div>
+    </div>
   </div>
 
   <div id="tab-oversikt" class="tab-content">
@@ -769,6 +800,103 @@
     </div>
   </div>
 
+  <!-- SKATTEKALKULATOR -->
+  <div id="tab-skatt" class="tab-content">
+    <h2 style="margin-bottom:6px;font-size:1.1rem">🧾 Skattekalkulator</h2>
+    <div class="skatt-toggle">
+      <button class="tab-btn active" id="skatt-btn-vanlig" onclick="skattSettModell('vanlig', this)">Vanlig konto (aksjonærmodellen)</button>
+      <button class="tab-btn" id="skatt-btn-ask" onclick="skattSettModell('ask', this)">Aksjesparekonto (ASK)</button>
+    </div>
+    <p id="skatt-intro" style="font-size:.82rem;color:var(--muted);margin-bottom:18px;line-height:1.6">
+      Beregner skatt ved salg av aksjer/aksjefond etter <strong>aksjonærmodellen</strong> (privatperson, utenfor ASK).
+      Skattepliktig gevinst reduseres med ubenyttet <strong>skjermingsfradrag</strong> og oppjusteres med
+      faktor 1,72 før 22 % skatt — effektiv sats <strong>37,84 %</strong>.
+    </p>
+    <div class="kalk-wrap">
+      <div>
+        <!-- Vanlig konto -->
+        <div class="kalk-form" id="skatt-form-vanlig">
+          <h3>Kjøp & salg</h3>
+          <div class="kalk-felt">
+            <label>Inngangsverdi / kostpris (kr)</label>
+            <input type="number" id="skatt-inngang" value="100000" min="0" step="1000" oninput="skattOppdater(true)">
+          </div>
+          <div class="kalk-felt">
+            <label>Salgssum etter omkostninger (kr)</label>
+            <input type="number" id="skatt-salg" value="160000" min="0" step="1000" oninput="skattOppdater(true)">
+          </div>
+
+          <h3>Skjermingsfradrag</h3>
+          <div class="kalk-rad">
+            <div class="kalk-felt">
+              <label>Antall hele eierår (per 31.12)</label>
+              <input type="number" id="skatt-ar" value="5" min="0" max="60" step="1" oninput="skattOppdater(true)">
+            </div>
+            <div class="kalk-felt">
+              <label>Skjermingsrente (% per år)</label>
+              <input type="number" id="skatt-rente" value="3.8" min="0" max="15" step="0.1" oninput="skattOppdater(true)">
+            </div>
+          </div>
+          <div class="kalk-felt">
+            <label>Eller: oppgi akkumulert ubenyttet skjerming direkte (kr)</label>
+            <input type="number" id="skatt-override" placeholder="valgfritt — overstyrer beregningen" min="0" step="100" oninput="skattOppdater(true)">
+          </div>
+
+          <button class="btn primary" style="width:100%;margin-top:10px" onclick="skattOppdater(false)">Beregn skatt</button>
+          <p style="font-size:.7rem;color:var(--muted);margin-top:10px;line-height:1.5;font-style:italic">
+            Skjermingsrenten fastsettes årlig av Skatteetaten i etterkant av inntektsåret.
+            Skjerming beregnes med renters rente på kostprisen og kan ikke skape tap.
+            Forenklet — sjekk alltid skattemeldingen.
+          </p>
+        </div>
+
+        <!-- Aksjesparekonto (ASK) -->
+        <div class="kalk-form" id="skatt-form-ask" style="display:none">
+          <h3>Konto & uttak</h3>
+          <div class="kalk-felt">
+            <label>Samlet innskudd / kostpris (kr)</label>
+            <input type="number" id="ask-innskudd" value="100000" min="0" step="1000" oninput="skattOppdater(true)">
+          </div>
+          <div class="kalk-felt">
+            <label>Verdi på kontoen nå (kr)</label>
+            <input type="number" id="ask-verdi" value="160000" min="0" step="1000" oninput="skattOppdater(true)">
+          </div>
+          <div class="kalk-felt">
+            <label>Uttak (kr) — tomt = tøm hele kontoen</label>
+            <input type="number" id="ask-uttak" placeholder="hele verdien" min="0" step="1000" oninput="skattOppdater(true)">
+          </div>
+
+          <h3>Skjermingsfradrag</h3>
+          <div class="kalk-rad">
+            <div class="kalk-felt">
+              <label>Antall hele år</label>
+              <input type="number" id="ask-ar" value="5" min="0" max="60" step="1" oninput="skattOppdater(true)">
+            </div>
+            <div class="kalk-felt">
+              <label>Skjermingsrente (% per år)</label>
+              <input type="number" id="ask-rente" value="3.8" min="0" max="15" step="0.1" oninput="skattOppdater(true)">
+            </div>
+          </div>
+          <div class="kalk-felt">
+            <label>Eller: oppgi akkumulert ubenyttet skjerming direkte (kr)</label>
+            <input type="number" id="ask-override" placeholder="valgfritt — overstyrer beregningen" min="0" step="100" oninput="skattOppdater(true)">
+          </div>
+
+          <button class="btn primary" style="width:100%;margin-top:10px" onclick="skattOppdater(false)">Beregn skatt</button>
+          <p style="font-size:.7rem;color:var(--muted);margin-top:10px;line-height:1.5;font-style:italic">
+            På ASK kan du kjøpe og selge skattefritt inne på kontoen. Innskuddet kan tas ut
+            skattefritt; kun gevinst over innskuddet beskattes. Skjermingsgrunnlaget er innskuddet.
+            Forenklet — sjekk alltid skattemeldingen.
+          </p>
+        </div>
+      </div>
+
+      <div class="kalk-resultat" id="skatt-resultat">
+        <div style="text-align:center;padding:60px;color:var(--muted)">Fyll inn tall og beregn …</div>
+      </div>
+    </div>
+  </div>
+
   <!-- MINE INSTRUMENTER -->
   <div id="tab-instrumenter" class="tab-content">
     <h2 style="margin-bottom:6px;font-size:1.1rem">⚙️ Mine instrumenter</h2>
@@ -863,6 +991,8 @@ let aktivFilter = "alle";
 let nyheterData = null;
 let nyhetFilter = "alle";
 let portefoljeData = null;
+let rapportData = null;
+let rapportChart = null;
 let portCharts = {};
 let beholdningState = {};
 let beholdningLagreTimer = null;
@@ -878,6 +1008,28 @@ function fmtPct(pct) {
   if (pct == null) return "–";
   const sign = pct > 0 ? "+" : "";
   return `${sign}${pct.toFixed(2)}%`;
+}
+function fmtPctKort(pct) {
+  if (pct == null) return "–";
+  const sign = pct > 0 ? "+" : "";
+  return `${sign}${pct.toFixed(1)}%`;
+}
+
+// Periode-etiketter for avkastnings-rutenettet i oversikten.
+const AVK_ETIKETTER = [
+  ["1d", "1 dag"], ["1u", "1 uke"], ["1m", "1 mnd"],
+  ["1y", "1 år"], ["5y", "5 år"], ["10y", "10 år"],
+];
+function byggAvkRutenett(avk) {
+  if (!avk) return "";
+  const celler = AVK_ETIKETTER.map(([nøkkel, etikett]) => {
+    const v = avk[nøkkel];
+    return `<div class="avk-celle">
+      <div class="periode">${etikett}</div>
+      <div class="verdi ${clsColor(v)}">${fmtPctKort(v)}</div>
+    </div>`;
+  }).join("");
+  return `<div class="card-avk">${celler}</div>`;
 }
 function toast(msg) {
   const el = document.getElementById("toast");
@@ -898,7 +1050,9 @@ function byttTab(navn, btn) {
   if (navn === "prognose") byggPrognoseValg();
   if (navn === "nyheter" && nyheterData === null) lastNyheter(false);
   if (navn === "portefolje" && portefoljeData === null) lastPortefolje(false);
+  if (navn === "rapport" && rapportData === null) lastRapport();
   if (navn === "kalkulator") kalkOppdater(false);
+  if (navn === "skatt") skattOppdater(false);
   if (navn === "instrumenter") lastInstrumenter();
 }
 
@@ -939,6 +1093,7 @@ function byggKort(d) {
         <div class="meta-item"><strong>${d.pe_ratio || "–"}</strong>P/E</div>
         <div class="meta-item"><strong>${d.utbytte || "–"}</strong>Utbytte</div>
       </div>
+      ${byggAvkRutenett(d.avkastning)}
     </div>`;
 }
 
@@ -2101,6 +2256,313 @@ async function kalkResetPortefolje() {
   } catch (e) {
     toast("Feil: " + e.message);
   }
+}
+
+/* ── Månedsrapport ───────────────────────────────────────────── */
+function rapportFmtKr(v) {
+  if (v == null || isNaN(v)) return "–";
+  const sign = v > 0 ? "+" : "";
+  return sign + Math.round(v).toLocaleString("no-NO") + " kr";
+}
+
+async function lastRapport() {
+  document.getElementById("rapport-innhold").innerHTML =
+    `<div style="text-align:center;padding:40px"><div class="spinner"></div>
+     <div style="margin-top:12px;color:var(--muted);font-size:.85rem">Henter rapport…</div></div>`;
+  try {
+    const resp = await fetch("/api/rapport");
+    rapportData = await resp.json();
+    renderRapport(rapportData);
+  } catch (e) {
+    document.getElementById("rapport-innhold").innerHTML =
+      `<div style="color:var(--danger);padding:20px">Feil ved henting av rapport: ${e.message}</div>`;
+  }
+}
+
+function renderRapport(d) {
+  const el = document.getElementById("rapport-innhold");
+  if (d.tom) {
+    el.innerHTML = `<div style="color:var(--muted);padding:30px;text-align:center">
+      Ingen instrumenter i porteføljen ennå. Marker noen under <strong>⚙️ Mine instrumenter</strong> først.</div>`;
+    return;
+  }
+
+  const t = d.total;
+  const krKort = d.har_beholdning ? `
+    <div class="kalk-stat-kort"><div class="label">Verdiendring (${d.maned_navn})</div>
+      <div class="verdi ${clsColor(t.endring_kr)}">${rapportFmtKr(t.endring_kr)}</div></div>
+    <div class="kalk-stat-kort mal"><div class="label">Total verdi nå</div>
+      <div class="verdi">${Math.round(t.verdi_kr).toLocaleString("no-NO")} kr</div></div>` : "";
+
+  const chip = (etikett, b) => b ? `
+    <div class="kalk-stat-kort ${b.avkastning_pct >= 0 ? 'opt' : 'pess'}">
+      <div class="label">${etikett}</div>
+      <div class="verdi" style="font-size:.95rem">${b.flagg || ""} ${b.navn}</div>
+      <div class="${clsColor(b.avkastning_pct)}" style="font-weight:700;font-size:.85rem;margin-top:2px">${fmtPct(b.avkastning_pct)}</div>
+    </div>` : "";
+
+  const rader = d.instrumenter.map(i => {
+    if (i.mangler_data) {
+      return `<tr><td>${i.flagg || ""} ${i.navn}</td><td colspan="4" style="color:var(--muted)">Mangler data</td></tr>`;
+    }
+    const krCeller = d.har_beholdning
+      ? `<td class="num">${i.verdi_kr != null ? Math.round(i.verdi_kr).toLocaleString("no-NO") + " kr" : "–"}</td>
+         <td class="num ${clsColor(i.endring_kr)}">${rapportFmtKr(i.endring_kr)}</td>`
+      : "";
+    return `<tr>
+      <td>${i.flagg || ""} ${i.navn}</td>
+      <td class="num">${i.vekt_pct != null ? i.vekt_pct + " %" : "–"}</td>
+      <td class="num ${clsColor(i.avkastning_pct)}" style="font-weight:700">${fmtPct(i.avkastning_pct)}</td>
+      ${krCeller}
+    </tr>`;
+  }).join("");
+
+  const krHeader = d.har_beholdning ? `<th class="num">Verdi</th><th class="num">Endring</th>` : "";
+
+  el.innerHTML = `
+    <div class="kalk-stats">
+      <div class="kalk-stat-kort ${clsColor(t.avkastning_pct) === 'pos' ? 'opt' : (clsColor(t.avkastning_pct) === 'neg' ? 'pess' : '')}">
+        <div class="label">Avkastning ${d.maned_navn}</div>
+        <div class="verdi ${clsColor(t.avkastning_pct)}">${fmtPct(t.avkastning_pct)}</div></div>
+      ${krKort}
+      ${chip("Beste i måneden", d.beste)}
+      ${chip("Svakeste i måneden", d.verst)}
+    </div>
+
+    ${d.flervaluta ? `<p style="font-size:.72rem;color:var(--warn);margin:-6px 0 12px">
+      ⚠️ Porteføljen har flere valutaer — kronebeløp og vekter er en tilnærming (ingen valutaomregning).</p>` : ""}
+
+    <div class="kalk-chart-wrap" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px">
+      <div class="kalk-chart-tittel">Siste 30 dager ${d.graf_30d.type === "kr" ? "(porteføljeverdi i kr)" : "(indeks, base 100 – lik vekt)"}</div>
+      <canvas id="rapport-30d-chart"></canvas>
+    </div>
+
+    <div class="inst-tabell">
+      <table>
+        <thead><tr><th>Instrument</th><th class="num">Vekt</th><th class="num">Avk. ${d.maned_navn}</th>${krHeader}</tr></thead>
+        <tbody>${rader}</tbody>
+      </table>
+    </div>
+
+    <p style="font-size:.72rem;color:var(--muted);margin-top:14px;font-style:italic">
+      Prisavkastning uten utbytte. Fondskurser kan være forsinket inntil 15 min og oppdateres sjeldnere enn aksjer (derav færre punkter i grafen).
+    </p>`;
+
+  // 30-dagers graf
+  const g = d.graf_30d;
+  if (rapportChart) { try { rapportChart.destroy(); } catch {} }
+  if (g.datoer.length >= 2) {
+    const erKr = g.type === "kr";
+    const stigning = g.verdi[g.verdi.length - 1] >= g.verdi[0];
+    const farge = stigning ? "#10b981" : "#ef4444";
+    rapportChart = new Chart(document.getElementById("rapport-30d-chart").getContext("2d"), {
+      type: "line",
+      data: {
+        labels: g.datoer,
+        datasets: [{
+          label: erKr ? "Verdi" : "Indeks",
+          data: g.verdi, borderColor: farge,
+          backgroundColor: stigning ? "rgba(16,185,129,.12)" : "rgba(239,68,68,.12)",
+          borderWidth: 2, pointRadius: g.datoer.length > 15 ? 1.5 : 3, fill: true, tension: 0.25,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: ctx => erKr
+            ? ` ${Math.round(ctx.parsed.y).toLocaleString("no-NO")} kr`
+            : ` ${ctx.parsed.y.toFixed(1)}` } } },
+        scales: {
+          x: { ticks: { color: "#94a3b8", font:{size:10}, maxTicksLimit: 8, autoSkip: true }, grid: { color: "#2e3350" } },
+          y: { ticks: { color: "#94a3b8", font:{size:10},
+                 callback: v => erKr ? (v/1000).toFixed(1) + "k" : v.toFixed(0) },
+               grid: { color: "#2e3350" } }
+        }
+      }
+    });
+  } else {
+    document.getElementById("rapport-30d-chart").parentElement.innerHTML +=
+      `<div style="color:var(--muted);font-size:.8rem;padding:10px 0">For få datapunkter for graf.</div>`;
+  }
+}
+
+/* ── Skattekalkulator ────────────────────────────────────────── */
+let skattTimer = null;
+let skattModell = "vanlig";
+
+const SKATT_INTRO = {
+  vanlig: `Beregner skatt ved salg av aksjer/aksjefond etter <strong>aksjonærmodellen</strong> (privatperson, utenfor ASK).
+           Skattepliktig gevinst reduseres med ubenyttet <strong>skjermingsfradrag</strong> og oppjusteres med
+           faktor 1,72 før 22 % skatt — effektiv sats <strong>37,84 %</strong>.`,
+  ask:    `Beregner skatt ved uttak fra <strong>aksjesparekonto (ASK)</strong>. Kjøp og salg inne på kontoen er skattefritt.
+           Innskuddet kan tas ut skattefritt; kun gevinst over innskuddet beskattes (oppjustert ×1,72 → 37,84 %), minus skjerming.`,
+};
+
+function skattFmtKr(v) {
+  if (v == null || isNaN(v)) return "–";
+  return Math.round(v).toLocaleString("no-NO") + " kr";
+}
+
+function skattSettModell(modell, btn) {
+  skattModell = modell;
+  document.querySelectorAll(".skatt-toggle .tab-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("skatt-form-vanlig").style.display = modell === "vanlig" ? "" : "none";
+  document.getElementById("skatt-form-ask").style.display    = modell === "ask" ? "" : "none";
+  document.getElementById("skatt-intro").innerHTML = SKATT_INTRO[modell];
+  skattOppdater(false);
+}
+
+function skattOppdater(debounce) {
+  clearTimeout(skattTimer);
+  skattTimer = setTimeout(skattKjor, debounce ? 350 : 0);
+}
+
+async function skattKjor() {
+  const ask = skattModell === "ask";
+  let endepunkt, body;
+  if (ask) {
+    const override = document.getElementById("ask-override").value;
+    const uttak = document.getElementById("ask-uttak").value;
+    endepunkt = "/api/skatt-ask";
+    body = {
+      innskudd:        Number(document.getElementById("ask-innskudd").value),
+      verdi:           Number(document.getElementById("ask-verdi").value),
+      ar:              Number(document.getElementById("ask-ar").value),
+      skjermingsrente: Number(document.getElementById("ask-rente").value) / 100,
+    };
+    if (uttak !== "") body.uttak = Number(uttak);
+    if (override !== "") body.skjerming_override = Number(override);
+  } else {
+    const override = document.getElementById("skatt-override").value;
+    endepunkt = "/api/skatt";
+    body = {
+      inngangsverdi:   Number(document.getElementById("skatt-inngang").value),
+      salgssum:        Number(document.getElementById("skatt-salg").value),
+      ar:              Number(document.getElementById("skatt-ar").value),
+      skjermingsrente: Number(document.getElementById("skatt-rente").value) / 100,
+    };
+    if (override !== "") body.skjerming_override = Number(override);
+  }
+
+  try {
+    const resp = await fetch(endepunkt, {
+      method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)
+    });
+    const d = await resp.json();
+    if (d.feil) {
+      document.getElementById("skatt-resultat").innerHTML = `<div style="color:var(--danger);padding:20px">${d.feil}</div>`;
+      return;
+    }
+    ask ? skattRenderAsk(d) : skattRender(d);
+  } catch (e) {
+    document.getElementById("skatt-resultat").innerHTML = `<div style="color:var(--danger);padding:20px">Feil: ${e.message}</div>`;
+  }
+}
+
+// Detaljrad i mellomregningen (delt mellom begge modeller).
+function skattRad(lab, val, sterk) {
+  return `<div class="kalk-sanns-rad" style="justify-content:space-between">
+       <span class="lab" style="flex:1;color:var(--muted)">${lab}</span>
+       <span class="pct" style="flex:0 0 auto;font-weight:${sterk ? 800 : 600}">${val}</span>
+     </div>`;
+}
+
+function skattRender(d) {
+  const tap = d.er_tap;
+  const rad = skattRad;
+  const gevinstKort = tap
+    ? `<div class="kalk-stat-kort pess"><div class="label">Realisert tap</div><div class="verdi">${skattFmtKr(d.raa_gevinst)}</div></div>`
+    : `<div class="kalk-stat-kort opt"><div class="label">Realisert gevinst</div><div class="verdi">${skattFmtKr(d.raa_gevinst)}</div></div>`;
+  const skattLabel = tap ? "Skattefradrag (tap)" : "Skatt å betale";
+  const skattKort = `<div class="kalk-stat-kort ${tap ? 'opt' : 'pess'}">
+      <div class="label">${skattLabel}</div>
+      <div class="verdi">${skattFmtKr(Math.abs(d.skatt))}</div></div>`;
+
+  const skjermingRad = d.skjerming_per_ar.length
+    ? rad(`Skjermingsfradrag (${d.ar} år · ${d.skjermingsrente_pct}%)`, skattFmtKr(d.skjerming_total))
+    : rad("Skjermingsfradrag (oppgitt)", skattFmtKr(d.skjerming_total));
+
+  document.getElementById("skatt-resultat").innerHTML = `
+    <div class="kalk-stats">
+      ${gevinstKort}
+      ${skattKort}
+      <div class="kalk-stat-kort"><div class="label">Netto gevinst etter skatt</div><div class="verdi">${skattFmtKr(d.netto_gevinst)}</div></div>
+      <div class="kalk-stat-kort mal"><div class="label">Netto utbetalt</div><div class="verdi">${skattFmtKr(d.netto_utbetalt)}</div></div>
+    </div>
+
+    <div class="kalk-sanns-bar">
+      <div class="kalk-sanns-tittel">Beregning</div>
+      ${rad("Salgssum", skattFmtKr(d.salgssum))}
+      ${rad("− Inngangsverdi", skattFmtKr(d.inngangsverdi))}
+      ${rad("= Rå gevinst/tap", skattFmtKr(d.raa_gevinst), true)}
+      ${skjermingRad}
+      ${tap ? rad("Ubenyttet skjerming (tapt ved tap)", skattFmtKr(d.ubenyttet_skjerming))
+            : rad("− Brukt skjerming", skattFmtKr(d.brukt_skjerming))}
+      ${rad("= Skattepliktig", skattFmtKr(d.skattepliktig), true)}
+      ${rad(`× Oppjustering (${d.oppjusteringsfaktor})`, skattFmtKr(d.oppjustert))}
+      ${rad(`× Skattesats (${d.skattesats_pct}%) = skatt`, skattFmtKr(d.skatt), true)}
+      ${!tap && d.ubenyttet_skjerming > 0 ? rad("Ubenyttet skjerming (tapt ved salg)", skattFmtKr(d.ubenyttet_skjerming)) : ""}
+    </div>
+
+    <p style="font-size:.75rem;color:var(--muted);margin-top:4px;line-height:1.6">
+      Effektiv skattesats på aksjeinntekt er <strong>${d.effektiv_sats_pct}%</strong>
+      ${!tap && d.raa_gevinst > 0 ? `; på din gevinst ble den <strong>${d.gevinst_effektiv_pct}%</strong> etter skjerming.` : "."}
+      ${tap ? "Tap gir et oppjustert fradrag som reduserer annen aksjeinntekt/alminnelig inntekt." : ""}
+    </p>`;
+}
+
+function skattRenderAsk(d) {
+  const tap = d.er_tap;
+  const rad = skattRad;
+  const skattLabel = tap ? "Skattefradrag (tap)" : "Skatt på uttaket";
+  const skattKort = `<div class="kalk-stat-kort ${tap ? 'opt' : 'pess'}">
+      <div class="label">${skattLabel}</div>
+      <div class="verdi">${skattFmtKr(Math.abs(d.skatt))}</div></div>`;
+
+  const skjermingRad = d.skjerming_per_ar.length
+    ? rad(`Skjermingsfradrag (${d.ar} år · ${d.skjermingsrente_pct}%)`, skattFmtKr(d.skjerming_total))
+    : rad("Skjermingsfradrag (oppgitt)", skattFmtKr(d.skjerming_total));
+
+  // Gevinstdel-raden: ved avslutning kan den være negativ (tap).
+  const gevinstRad = d.avslutter
+    ? rad("= Gevinst/tap ved avslutning (verdi − innskudd)", skattFmtKr(d.gevinst_uttak), true)
+    : rad("= Skattepliktig gevinstdel (uttak − innskudd)", skattFmtKr(d.gevinst_uttak), true);
+
+  document.getElementById("skatt-resultat").innerHTML = `
+    <div class="kalk-stats">
+      <div class="kalk-stat-kort ${d.urealisert_gevinst < 0 ? 'pess' : 'opt'}">
+        <div class="label">Urealisert gevinst i konto</div>
+        <div class="verdi">${skattFmtKr(d.urealisert_gevinst)}</div></div>
+      ${skattKort}
+      <div class="kalk-stat-kort"><div class="label">Skattefritt uttak</div><div class="verdi">${skattFmtKr(d.skattefritt_uttak)}</div></div>
+      <div class="kalk-stat-kort mal"><div class="label">Netto utbetalt uttak</div><div class="verdi">${skattFmtKr(d.netto_uttak)}</div></div>
+    </div>
+
+    <div class="kalk-sanns-bar">
+      <div class="kalk-sanns-tittel">Beregning</div>
+      ${rad("Verdi på kontoen", skattFmtKr(d.verdi))}
+      ${rad("Samlet innskudd", skattFmtKr(d.innskudd))}
+      ${rad("Uttak" + (d.avslutter ? " (tømmer kontoen)" : ""), skattFmtKr(d.uttak), true)}
+      ${rad("− Skattefritt (av innskudd)", skattFmtKr(d.skattefritt_uttak))}
+      ${gevinstRad}
+      ${skjermingRad}
+      ${tap ? rad("Skjerming (ikke brukt ved tap)", skattFmtKr(d.skjerming_total))
+            : rad("− Brukt skjerming", skattFmtKr(d.brukt_skjerming))}
+      ${rad("= Skattepliktig", skattFmtKr(d.skattepliktig), true)}
+      ${rad(`× Oppjustering (${d.oppjusteringsfaktor})`, skattFmtKr(d.oppjustert))}
+      ${rad(`× Skattesats (${d.skattesats_pct}%) = skatt`, skattFmtKr(d.skatt), true)}
+      ${!tap && d.ubenyttet_skjerming > 0 ? rad("Ubenyttet skjerming (overføres til neste år)", skattFmtKr(d.ubenyttet_skjerming)) : ""}
+      ${d.gjenstaende_verdi > 0 ? rad("Gjenstående verdi på kontoen", skattFmtKr(d.gjenstaende_verdi)) : ""}
+    </div>
+
+    <p style="font-size:.75rem;color:var(--muted);margin-top:4px;line-height:1.6">
+      ${d.gevinst_uttak <= 0 && !tap
+        ? "Uttaket dekkes helt av innskuddet — ingen skatt utløses."
+        : `Effektiv skattesats på aksjeinntekt er <strong>${d.effektiv_sats_pct}%</strong>.`}
+      ${tap ? " Tap realiseres kun når kontoen tømmes, og gir et oppjustert fradrag." : ""}
+      ${!d.avslutter && !tap ? " Ubenyttet skjerming og resten av gevinsten beskattes først ved senere uttak." : ""}
+    </p>`;
 }
 
 /* ── Mine instrumenter ───────────────────────────────────────── */

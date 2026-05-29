@@ -46,6 +46,22 @@ RISIKOFRI_RENTE = 0.02
 DEFAULT_BENCH = "URTH"
 
 
+# ─── Skatt (aksjonærmodellen, privatperson utenfor ASK) ─────────────────────
+#
+# Gevinst på aksjer/aksjefond beskattes etter aksjonærmodellen: skattepliktig
+# gevinst oppjusteres med en faktor før alminnelig skattesats. Effektiv sats
+# = SKATTESATS × OPPJUSTERINGSFAKTOR. For 2024–2026: 0,22 × 1,72 = 37,84 %.
+# Skjermingsfradrag skjermer en del av gevinsten/utbyttet mot skatt.
+# Verdiene fastsettes årlig — sjekk Skatteetaten hvis tallene endres.
+
+SKATTESATS = 0.22              # Alminnelig inntekt
+OPPJUSTERINGSFAKTOR = 1.72     # Oppjustering av aksjeinntekt (2024–2026)
+
+# Skjermingsrenten fastsettes i etterkant av hvert inntektsår av Skatteetaten.
+# Default brukt i kalkulatoren når brukeren ikke oppgir egen sats (2024-nivå).
+SKJERMINGSRENTE_DEFAULT = 0.038
+
+
 # ─── Nyhetskilder ───────────────────────────────────────────────────────────
 
 # VADER er trent på engelsk, så norske scores er grove og reagerer mest på

@@ -130,6 +130,19 @@ personlige filer (beholdning, brukerinstrumenter, porteføljevalg) persisteres p
 - Sannsynlighet for å nå mål (100%, 80%, 50%)
 - Median-bane, aksjeandel-utvikling og fordeling av sluttverdier
 
+### 📋 Månedsrapport
+- Hvordan porteføljen gikk forrige kalendermåned — per instrument og totalt
+- Vektet etter beholdning (markedsverdi) med kronebeløp, eller lik vekt i prosent
+- Beste/svakeste instrument i måneden
+- Graf over porteføljens utvikling de siste 30 dagene
+
+### 🧾 Skattekalkulator
+- To modeller: **vanlig konto** (aksjonærmodellen) og **aksjesparekonto (ASK)**
+- Realisert gevinst/tap, skjermingsfradrag (renters rente på kostprisen) eller oppgi akkumulert skjerming direkte
+- ASK: skattefritt uttak av innskudd, skatt kun på gevinst over innskudd, hele/delvise uttak
+- Oppjustering (×1,72) og 22 % skatt → effektiv sats 37,84 %
+- Full mellomregning, netto utbetalt og effektiv sats på faktisk gevinst
+
 ### 🌡️ Markedstermometer
 - S&P 500, Nasdaq, Oslo Børs, VIX, USD/NOK, EUR/NOK, Brent
 - VIX-tolkning: rolig (<15) / normal / uro (>25)
@@ -148,8 +161,11 @@ personlige filer (beholdning, brukerinstrumenter, porteføljevalg) persisteres p
 | `/api/marked` | GET | Markedstermometer (indekser, VIX, valuta, råvarer) |
 | `/api/nyheter` | GET | Sentiment-analyse for alle instrumenter |
 | `/api/portefolje` | GET | Min portefølje med 1Y historikk og nyheter |
+| `/api/rapport` | GET | Månedsrapport: forrige måned + 30-dagers utvikling |
 | `/api/portefolje-stats` | GET | Historisk vol og CAGR (lik vekt) |
 | `/api/kalkulator` | POST | Konfigurerbar Monte Carlo med glidebane |
+| `/api/skatt` | POST | Skatt på realisert gevinst (skjermingsfradrag, aksjonærmodellen) |
+| `/api/skatt-ask` | POST | Skatt ved uttak fra aksjesparekonto (ASK) |
 | `/api/beholdning` | GET/POST | Hent/lagre brukerens beholdning |
 | `/api/instrumenter` | GET/POST | List alle / legg til nytt brukerinstrument |
 | `/api/instrumenter/sjekk/<ticker>` | GET | Valider ticker mot Yahoo Finance (auto-fyll) |

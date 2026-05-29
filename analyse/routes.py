@@ -10,7 +10,7 @@ from flask import Blueprint, current_app, jsonify, render_template, request
 
 from .beholdning import les_beholdning, skriv_beholdning
 from .cache import hent_historikk
-from .config import DEFAULT_BENCH, PERIODER, RISIKOFRI_RENTE
+from .config import DEFAULT_BENCH, PERIODER, RISIKOFRI_RENTE, SKJERMINGSRENTE_DEFAULT
 from .info import hent_info
 from .instrumenter import (
     aksjer,
@@ -26,7 +26,9 @@ from .instrumenter import (
 from .kalkulator import glidebane_vekter, monte_carlo
 from .marked import hent_markedstemperatur
 from .nyheter import hent_nyheter_for, hete_siste_uke, retning
+from .rapport import lag_rapport
 from .risiko import beregn_risiko, portefolje_aksje_stats
+from .skatt import beregn_skatt, beregn_skatt_ask
 
 
 bp = Blueprint("api", __name__)
@@ -459,6 +461,76 @@ def api_kalkulator():
         "median_bane": [round(float(v), 0) for v in median_bane],
         "histogram":   histogram,
     })
+
+
+# ─── Månedsrapport ──────────────────────────────────────────────────────────
+
+@bp.route("/api/rapport")
+def api_rapport():
+    """Månedsrapport: forrige kalendermåned + 7-dagers utvikling for porteføljen."""
+    return jsonify(lag_rapport())
+
+
+# ─── Skattekalkulator (aksjonærmodellen) ────────────────────────────────────
+
+@bp.route("/api/skatt", methods=["POST"])
+def api_skatt():
+    """Beregn skatt på realisert aksjegevinst med skjermingsfradrag.
+
+    Body: {inngangsverdi, salgssum, ar?, skjermingsrente?, skjerming_override?}
+    """
+    d = request.get_json(silent=True) or {}
+    try:
+        inngangsverdi = float(d.get("inngangsverdi", 0))
+        salgssum = float(d.get("salgssum", 0))
+        ar = max(0, int(d.get("ar", 0)))
+        skjermingsrente = float(d.get("skjermingsrente", SKJERMINGSRENTE_DEFAULT))
+        override = d.get("skjerming_override")
+        skjerming_override = float(override) if override not in (None, "") else None
+    except (TypeError, ValueError):
+        return jsonify({"feil": "Ugyldige tall i input"}), 400
+
+    if inngangsverdi < 0 or salgssum < 0:
+        return jsonify({"feil": "Beløp kan ikke være negative"}), 400
+    if inngangsverdi == 0 and salgssum == 0:
+        return jsonify({"feil": "Oppgi inngangsverdi og salgssum"}), 400
+
+    return jsonify(beregn_skatt(
+        inngangsverdi, salgssum, ar=ar,
+        skjermingsrente=skjermingsrente,
+        skjerming_override=skjerming_override,
+    ))
+
+
+@bp.route("/api/skatt-ask", methods=["POST"])
+def api_skatt_ask():
+    """Beregn skatt ved uttak fra aksjesparekonto (ASK).
+
+    Body: {innskudd, verdi, uttak?, ar?, skjermingsrente?, skjerming_override?}
+    """
+    d = request.get_json(silent=True) or {}
+    try:
+        innskudd = float(d.get("innskudd", 0))
+        verdi = float(d.get("verdi", 0))
+        uttak_raw = d.get("uttak")
+        uttak = float(uttak_raw) if uttak_raw not in (None, "") else None
+        ar = max(0, int(d.get("ar", 0)))
+        skjermingsrente = float(d.get("skjermingsrente", SKJERMINGSRENTE_DEFAULT))
+        override = d.get("skjerming_override")
+        skjerming_override = float(override) if override not in (None, "") else None
+    except (TypeError, ValueError):
+        return jsonify({"feil": "Ugyldige tall i input"}), 400
+
+    if innskudd < 0 or verdi < 0 or (uttak is not None and uttak < 0):
+        return jsonify({"feil": "Beløp kan ikke være negative"}), 400
+    if innskudd == 0 and verdi == 0:
+        return jsonify({"feil": "Oppgi innskudd og verdi på kontoen"}), 400
+
+    return jsonify(beregn_skatt_ask(
+        innskudd, verdi, uttak=uttak, ar=ar,
+        skjermingsrente=skjermingsrente,
+        skjerming_override=skjerming_override,
+    ))
 
 
 # ─── Korrelasjon ────────────────────────────────────────────────────────────
