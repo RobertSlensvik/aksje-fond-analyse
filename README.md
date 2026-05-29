@@ -147,6 +147,12 @@ personlige filer (beholdning, brukerinstrumenter, porteføljevalg) persisteres p
 - S&P 500, Nasdaq, Oslo Børs, VIX, USD/NOK, EUR/NOK, Brent
 - VIX-tolkning: rolig (<15) / normal / uro (>25)
 
+### 🤖 AI-assistent (valgfri)
+- Chat-boble nederst til høyre som svarer på spørsmål om porteføljen din
+- Drevet av Claude API, med porteføljekonteksten din (rapport, beholdning) som grunnlag
+- **Av som standard** — gjør ingen API-kall og koster ingenting før du legger inn en nøkkel
+- Aktiveres ved å sette `ANTHROPIC_API_KEY` i en `.env`-fil (se [`.env.example`](.env.example)). `.env` er gitignored — nøkkelen havner aldri på GitHub.
+
 ## API-referanse
 
 | Endpoint | Metode | Beskrivelse |
@@ -162,6 +168,8 @@ personlige filer (beholdning, brukerinstrumenter, porteføljevalg) persisteres p
 | `/api/nyheter` | GET | Sentiment-analyse for alle instrumenter |
 | `/api/portefolje` | GET | Min portefølje med 1Y historikk og nyheter |
 | `/api/rapport` | GET | Månedsrapport: forrige måned + 30-dagers utvikling |
+| `/api/chat/status` | GET | Om AI-assistenten er aktivert (API-nøkkel satt) |
+| `/api/chat` | POST | Send samtale til Claude (krever `ANTHROPIC_API_KEY`) |
 | `/api/portefolje-stats` | GET | Historisk vol og CAGR (lik vekt) |
 | `/api/kalkulator` | POST | Konfigurerbar Monte Carlo med glidebane |
 | `/api/skatt` | POST | Skatt på realisert gevinst (skjermingsfradrag, aksjonærmodellen) |

@@ -10,6 +10,7 @@ from flask import Blueprint, current_app, jsonify, render_template, request
 
 from .beholdning import les_beholdning, skriv_beholdning
 from .cache import hent_historikk
+from .chat import chat_konfigurert, chat_svar
 from .config import DEFAULT_BENCH, PERIODER, RISIKOFRI_RENTE, SKJERMINGSRENTE_DEFAULT
 from .info import hent_info
 from .instrumenter import (
@@ -461,6 +462,25 @@ def api_kalkulator():
         "median_bane": [round(float(v), 0) for v in median_bane],
         "histogram":   histogram,
     })
+
+
+# ─── AI-assistent (Claude) ──────────────────────────────────────────────────
+
+@bp.route("/api/chat/status")
+def api_chat_status():
+    """Om AI-boblen er aktiv (dvs. om en API-nøkkel er konfigurert)."""
+    return jsonify({"konfigurert": chat_konfigurert()})
+
+
+@bp.route("/api/chat", methods=["POST"])
+def api_chat():
+    """Send samtalehistorikk til Claude. Body: {meldinger: [{role, content}]}."""
+    data = request.get_json(silent=True) or {}
+    meldinger = data.get("meldinger")
+    if not isinstance(meldinger, list) or not meldinger:
+        return jsonify({"feil": "Forventet en ikke-tom liste 'meldinger'"}), 400
+    svar = chat_svar(meldinger)
+    return jsonify(svar), (200 if "svar" in svar else 503 if svar.get("konfigurert") is False else 200)
 
 
 # ─── Månedsrapport ──────────────────────────────────────────────────────────
