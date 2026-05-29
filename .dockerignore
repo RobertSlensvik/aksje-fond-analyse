@@ -1,0 +1,39 @@
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+.git/
+.gitignore
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+*.log
+/tmp/
+
+# Brukerens personlige data skal ikke bakes inn i image —
+# data/-katalogen mountes inn via volum i docker-compose.
+data/
+beholdning.json
+bruker_instrumenter.json
+bruker_portefolje.json
+
+# Lokal venv start-skript trengs ikke i container
+start.sh
+start.bat
