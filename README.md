@@ -30,7 +30,7 @@ Egne instrumenter legger du til via **⚙️ Mine instrumenter**-fanen, og de la
 - **Sentiment-prognose** fra E24 + Yahoo Finance via VADER NLP
 - **Markedstermometer** med VIX-tolkning, valuta, indekser og råvarer
 - **Investeringsprognose** — log-normal Monte Carlo med p5/median/p95
-- **Parallellisert datahenting** med TTL-cache → 14 instrumenter på 2 sekunder cold, 11 ms warm
+- **Parallellisert datahenting** med TTL-cache → hele porteføljen på et par sekunder cold, millisekunder warm
 
 ## Tech stack
 
@@ -101,7 +101,7 @@ personlige filer (beholdning, brukerinstrumenter, porteføljevalg) persisteres p
 - Topp nyheter med sentiment-score per fond
 
 ### 📊 Oversikt
-- 14 instrumenter (norske + internasjonale) lastes parallelt
+- Alle instrumentene dine (norske + internasjonale) lastes parallelt
 - Filter: alle / aksjer / fond/ETF
 - Kort med pris, dagsendring, markedsverdi, P/E, utbytte
 
@@ -217,13 +217,14 @@ Returnerer p5/median/p95, P(≥mål), median-bane, aksjevekt-tidsserie og histog
                           │  └───────┬────────┘  │
                           └──────────┼───────────┘
                                      │
-                  ┌──────────────────┼──────────────────┐
-                  │                  │                  │
-                  ▼                  ▼                  ▼
-            ┌──────────┐       ┌──────────┐      ┌──────────┐
-            │ yfinance │       │   E24    │      │  VADER   │
-            │  (Yahoo) │       │  (RSS)   │      │  (NLP)   │
-            └──────────┘       └──────────┘      └──────────┘
+           ┌─────────────┬──────────────┼──────────────┐
+           │             │              │              │
+           ▼             ▼              ▼              ▼
+     ┌──────────┐  ┌──────────┐   ┌──────────┐   ┌──────────┐
+     │ yfinance │  │   E24    │   │  VADER   │   │  Claude  │
+     │  (Yahoo) │  │  (RSS)   │   │  (NLP)   │   │  (API*)  │
+     └──────────┘  └──────────┘   └──────────┘   └──────────┘
+                                          * valgfri AI-assistent
 ```
 
 ### Designvalg verdt å vite
