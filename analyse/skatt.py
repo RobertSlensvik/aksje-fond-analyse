@@ -39,7 +39,7 @@ def beregn_skatt(inngangsverdi, salgssum, ar=0,
       inngangsverdi      Kjøpesum inkl. kjøpsomkostninger (kostpris).
       salgssum           Salgssum etter salgsomkostninger (netto).
       ar                 Antall hele eierår (per 31.12) for skjermingsakkumulering.
-      skjermingsrente    Årlig skjermingsrente (desimal, f.eks. 0.038).
+      skjermingsrente    Årlig skjermingsrente (desimal, f.eks. 0.036).
       skjerming_override Oppgi akkumulert ubenyttet skjerming direkte (kr) i
                          stedet for å beregne den fra `ar` og renten.
 

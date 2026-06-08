@@ -57,9 +57,10 @@ DEFAULT_BENCH = "URTH"
 SKATTESATS = 0.22              # Alminnelig inntekt
 OPPJUSTERINGSFAKTOR = 1.72     # Oppjustering av aksjeinntekt (2024–2026)
 
-# Skjermingsrenten fastsettes i etterkant av hvert inntektsår av Skatteetaten.
-# Default brukt i kalkulatoren når brukeren ikke oppgir egen sats (2024-nivå).
-SKJERMINGSRENTE_DEFAULT = 0.038
+# Skjermingsrenten fastsettes i etterkant av hvert inntektsår av Skatteetaten
+# (i januar året etter). Default brukt i kalkulatoren når brukeren ikke oppgir
+# egen sats. Offisielle satser: 2024 = 3,9 %, 2025 = 3,6 %.
+SKJERMINGSRENTE_DEFAULT = 0.036    # Inntektsåret 2025
 
 
 # ─── Nyhetskilder ───────────────────────────────────────────────────────────
