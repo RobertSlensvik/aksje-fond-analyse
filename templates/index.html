@@ -51,6 +51,21 @@
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
+    /* Undernivå: understrek i stedet for fylt pille, så hierarkiet er tydelig. */
+    .subtabs {
+      display: flex; gap: 2px; flex-wrap: wrap;
+      border-bottom: 1px solid var(--border); margin-bottom: 22px;
+    }
+    .subtab-btn {
+      padding: 9px 16px; border: none; background: none; color: var(--muted);
+      cursor: pointer; font-size: .85rem; font-weight: 600; font-family: inherit;
+      border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .2s;
+    }
+    .subtab-btn:hover { color: var(--text); }
+    .subtab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .subtab-content { display: none; }
+    .subtab-content.active { display: block; }
+
     /* ── Kort grid ── */
     .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
     .card {
@@ -242,6 +257,129 @@
     .hete-sak a { color: var(--text); text-decoration: none; }
     .hete-sak a:hover { color: var(--accent); }
     .hete-tom { color: var(--muted); font-size: .85rem; font-style: italic; }
+
+    /* ── Treffsikkerhet ── */
+    .treff-samlet {
+      background: linear-gradient(135deg, rgba(59,130,246,.12), rgba(16,185,129,.06));
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 18px 20px; margin-bottom: 22px;
+    }
+    .treff-samlet-tittel { font-size: .95rem; font-weight: 700; margin-bottom: 14px; }
+    .treff-nokkeltall { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+    .treff-tall { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+    .treff-tall .verdi { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
+    .treff-tall .label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 4px; }
+    .treff-tall .hint { font-size: .68rem; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+    .treff-tolkning { font-size: .82rem; color: var(--muted); margin-top: 14px; line-height: 1.6; }
+
+    .treff-kort {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px 18px; margin-bottom: 14px;
+    }
+    .treff-kort-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+    .treff-navn { font-weight: 700; font-size: .98rem; }
+    .treff-ticker { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+    .treff-prosent { font-size: 1.4rem; font-weight: 700; text-align: right; line-height: 1.1; }
+    .treff-prosent .under { font-size: .68rem; color: var(--muted); font-weight: 500; display: block; margin-top: 3px; }
+    .treff-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--surface); margin: 12px 0 10px; }
+    .treff-bar div { height: 100%; }
+    .tb-treff { background: var(--accent2); }
+    .tb-flat  { background: var(--muted); }
+    .tb-bom   { background: var(--danger); }
+    .treff-stats { font-size: .75rem; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; }
+    .treff-snitt-rad { display: flex; gap: 18px; flex-wrap: wrap; font-size: .78rem; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+    .treff-snitt-rad .m { color: var(--muted); }
+    .treff-detalj { margin-top: 12px; }
+    .treff-detalj summary { font-size: .75rem; color: var(--muted); cursor: pointer; user-select: none; }
+    .treff-detalj summary:hover { color: var(--accent); }
+    .treff-sak {
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+      padding: 8px 0 8px 10px; border-left: 3px solid var(--border); margin-top: 8px;
+    }
+    .treff-sak.treff { border-left-color: var(--accent2); }
+    .treff-sak.bom   { border-left-color: var(--danger); }
+    .treff-sak.flat, .treff-sak.nøytral_sak { border-left-color: var(--muted); }
+    .treff-sak a { color: var(--text); text-decoration: none; font-size: .82rem; line-height: 1.4; }
+    .treff-sak a:hover { color: var(--accent); }
+    .treff-sak-meta { font-size: .68rem; color: var(--muted); margin-top: 3px; }
+    .treff-sak-endring { font-size: .85rem; font-weight: 700; white-space: nowrap; text-align: right; }
+    .treff-sak-utfall { font-size: .65rem; color: var(--muted); font-weight: 500; display: block; margin-top: 2px; }
+
+    .datavindu {
+      border-radius: 10px; padding: 10px 14px; margin-bottom: 16px;
+      font-size: .76rem; line-height: 1.55;
+      border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+    }
+    .datavindu strong { color: var(--text); font-weight: 700; }
+    .datavindu.kort,
+    .datavindu.svært-kort {
+      border-color: var(--warn); background: rgba(245, 158, 11, .10); color: var(--warn);
+    }
+    .datavindu.kort strong,
+    .datavindu.svært-kort strong { color: var(--warn); }
+    .datavindu.svært-kort { border-width: 2px; }
+
+    /* ── Transaksjoner ── */
+    .trans-form {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 18px; margin-bottom: 22px;
+    }
+    .trans-rad { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    .trans-rad label { display: flex; flex-direction: column; gap: 4px; }
+    .trans-rad input, .trans-rad select {
+      padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text); font-size: .85rem; font-family: inherit;
+    }
+    .trans-kort {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 18px; margin-bottom: 14px;
+    }
+    .trans-kort-topp { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+    .trans-navn { font-weight: 700; font-size: .98rem; }
+    .trans-ticker { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+    .trans-noekkel { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 14px 0; }
+    .trans-noekkel .boks { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
+    .trans-noekkel .label { font-size: .65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .trans-noekkel .verdi { font-size: 1.02rem; font-weight: 700; margin-top: 3px; }
+    .trans-tabell { width: 100%; border-collapse: collapse; font-size: .78rem; margin-top: 8px; }
+    .trans-tabell th {
+      text-align: left; color: var(--muted); font-weight: 600; font-size: .68rem;
+      text-transform: uppercase; letter-spacing: .04em; padding: 6px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .trans-tabell td { padding: 7px 8px; border-bottom: 1px solid var(--border); }
+    .trans-tabell tr:last-child td { border-bottom: none; }
+    .trans-tabell .h { text-align: right; }
+    .trans-merke {
+      font-size: .65rem; font-weight: 700; padding: 2px 7px; border-radius: 5px;
+      text-transform: uppercase; letter-spacing: .03em;
+    }
+    .trans-merke.kjøp { background: rgba(16,185,129,.15); color: var(--accent2); }
+    .trans-merke.salg { background: rgba(239,68,68,.15); color: var(--danger); }
+    .trans-slett {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: .85rem; padding: 2px 6px; border-radius: 5px;
+    }
+    .trans-slett:hover { color: var(--danger); background: rgba(239,68,68,.12); }
+
+    .skatt-kilde-boks {
+      background: rgba(59,130,246,.10); border: 1px solid var(--accent);
+      border-radius: 10px; padding: 11px 14px; margin-bottom: 14px;
+      font-size: .78rem; line-height: 1.55; color: var(--text);
+    }
+    .skatt-kilde-boks strong { color: var(--accent); }
+    .skatt-kilde-boks em { color: var(--muted); }
+
+    .kalk-datavindu-note {
+      font-size: .74rem; color: var(--muted); line-height: 1.55;
+      margin: -8px 0 16px; font-style: italic;
+    }
+
+    .valuta-advarsel {
+      background: rgba(245, 158, 11, .10); border: 1px solid var(--warn);
+      border-radius: 10px; padding: 10px 14px; margin-bottom: 16px;
+      font-size: .78rem; color: var(--warn); line-height: 1.5;
+    }
 
     /* ── Min portefølje ── */
     .port-toppbar {
@@ -606,13 +744,11 @@
   <!-- Tabs -->
   <div class="tabs">
     <button class="tab-btn active" onclick="byttTab('portefolje', this)">💼 Min portefølje</button>
-    <button class="tab-btn" onclick="byttTab('rapport', this)">📋 Rapport</button>
     <button class="tab-btn" onclick="byttTab('oversikt', this)">📊 Oversikt</button>
     <button class="tab-btn" onclick="byttTab('nyheter', this)">📰 Nyheter</button>
+    <button class="tab-btn" onclick="byttTab('treff', this)">🎯 Treffsikkerhet</button>
     <button class="tab-btn" onclick="byttTab('sammenlign', this)">⚖️ Sammenlign</button>
-    <button class="tab-btn" onclick="byttTab('prognose', this)">💰 Prognose</button>
     <button class="tab-btn" onclick="byttTab('kalkulator', this)">🧮 Kalkulator</button>
-    <button class="tab-btn" onclick="byttTab('skatt', this)">🧾 Skatt</button>
     <button class="tab-btn" onclick="byttTab('instrumenter', this)">⚙️ Mine instrumenter</button>
   </div>
 
@@ -620,8 +756,65 @@
   <div id="marked-bar" class="marked-bar" style="display:none"></div>
 
   <!-- OVERSIKT -->
-  <!-- MIN PORTEFØLJE -->
+  <!-- MIN PORTEFØLJE (med månedsrapport som undertab) -->
   <div id="tab-portefolje" class="tab-content active">
+    <div class="subtabs">
+      <button class="subtab-btn active" onclick="byttUnderTab('portefolje','beholdning',this)">💼 Beholdning</button>
+      <button class="subtab-btn" onclick="byttUnderTab('portefolje','transaksjoner',this)">🧾 Transaksjoner</button>
+      <button class="subtab-btn" onclick="byttUnderTab('portefolje','rapport',this)">📋 Månedsrapport</button>
+    </div>
+    <div id="sub-portefolje-transaksjoner" class="subtab-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:10px">
+        <h2 style="font-size:1.1rem">🧾 Transaksjoner</h2>
+        <button class="btn" onclick="lastTransaksjoner()">🔄 Oppdater</button>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:18px;line-height:1.6">
+        Registrer kjøp og salg, så regnes kostpris, realisert gevinst og
+        <strong>pengevektet avkastning</strong> ut automatisk. Sistnevnte er hva
+        <em>du</em> har tjent — med månedlig sparing er det ofte noe helt annet enn
+        fondets avkastning.<br>
+        Salg følger <strong>FIFO</strong> (først inn, først ut), slik norske skatteregler krever,
+        og kjøpsgebyr legges inn i inngangsverdien.
+      </p>
+
+      <div class="trans-form">
+        <h3 style="font-size:.9rem;margin-bottom:12px">Ny transaksjon</h3>
+        <div class="trans-rad">
+          <label><span class="form-label">Instrument</span>
+            <select id="trans-ticker"></select></label>
+          <label><span class="form-label">Type</span>
+            <select id="trans-type">
+              <option value="kjøp">Kjøp</option>
+              <option value="salg">Salg</option>
+            </select></label>
+          <label><span class="form-label">Dato</span>
+            <input type="date" id="trans-dato"></label>
+          <label><span class="form-label">Antall andeler</span>
+            <input type="number" id="trans-antall" step="any" min="0" placeholder="0,58"></label>
+          <label><span class="form-label">Kurs per andel</span>
+            <input type="number" id="trans-kurs" step="any" min="0" placeholder="7287,73"></label>
+          <label><span class="form-label">Gebyr (valgfritt)</span>
+            <input type="number" id="trans-gebyr" step="any" min="0" placeholder="0"></label>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap">
+          <button class="btn primary" onclick="lagreTransaksjon()">Legg til</button>
+          <span id="trans-status" style="font-size:.78rem;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <div id="trans-innhold">
+        <div class="loading-card" style="text-align:center;padding:40px">
+          <div style="color:var(--muted);font-size:.9rem">Laster…</div>
+        </div>
+      </div>
+
+      <p style="font-size:.75rem;color:var(--muted);margin-top:24px;font-style:italic">
+        Lagres i <code>data/transaksjoner.json</code>. Har et instrument transaksjoner, brukes
+        de utledede tallene; ellers gjelder det du har skrevet inn manuelt under Beholdning.
+        Pengevektet avkastning (XIRR) forutsetter at dagens kurs er riktig verdsettelse.
+      </p>
+    </div>
+    <div id="sub-portefolje-beholdning" class="subtab-content active">
     <div class="port-toppbar">
       <h2 style="font-size:1.1rem">💼 Min portefølje</h2>
       <div class="port-sum">
@@ -631,6 +824,7 @@
         <button class="btn" style="margin-left:10px;font-size:.7rem;padding:4px 10px" onclick="lastPortefolje(true)">🔄</button>
       </div>
     </div>
+    <div id="port-valuta-advarsel"></div>
     <div id="port-innhold">
       <div style="text-align:center;padding:40px"><div class="spinner"></div>
         <div style="margin-top:12px;color:var(--muted);font-size:.85rem">Henter porteføljedata…</div>
@@ -640,22 +834,24 @@
     <p style="font-size:.72rem;color:var(--muted);margin-top:18px;font-style:italic">
       Antall andeler og snittpris lagres i <code>beholdning.json</code> i prosjektmappen — overlever browser-bytte og cache-tømming. Kursdata kan være forsinket inntil 15 min.
     </p>
-  </div>
+  
+    </div>
 
-  <!-- RAPPORT -->
-  <div id="tab-rapport" class="tab-content">
+    <div id="sub-portefolje-rapport" class="subtab-content">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:10px">
       <h2 style="font-size:1.1rem">📋 Månedsrapport</h2>
       <button class="btn" onclick="lastRapport()">🔄 Oppdater</button>
     </div>
     <p style="font-size:.82rem;color:var(--muted);margin-bottom:18px;line-height:1.6">
       Hvordan porteføljen din gikk <strong>forrige kalendermåned</strong>, og utviklingen de <strong>siste 7 dagene</strong>.
-      Avkastning er prisavkastning i instrumentets valuta. Har du registrert beholdning, vektes totalen etter markedsverdi og kroner vises.
+      Avkastning er <strong>totalavkastning</strong> i instrumentets valuta — kursene er justert for utbytte og splitter, så reinvestert utbytte er med. Har du registrert beholdning, vektes totalen etter markedsverdi og kroner vises.
     </p>
     <div id="rapport-innhold">
       <div style="text-align:center;padding:40px"><div class="spinner"></div>
         <div style="margin-top:12px;color:var(--muted);font-size:.85rem">Henter rapport…</div>
       </div>
+    </div>
+  
     </div>
   </div>
 
@@ -699,6 +895,36 @@
     </p>
   </div>
 
+  <!-- TREFFSIKKERHET -->
+  <div id="tab-treff" class="tab-content">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:10px">
+      <h2 style="font-size:1.1rem">🎯 Traff nyhetene? Sentiment vs. faktisk kurs</h2>
+      <button class="btn" onclick="lastTreff(true)">🔄 Hent ferske nyheter + oppdater</button>
+    </div>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:16px;line-height:1.6">
+      Hver nyhetssak lagres med sentiment-etiketten sin. Her måles hva kursen faktisk gjorde etterpå:
+      fra siste sluttkurs <strong>før</strong> saken, til sluttkurs <strong>N handelsdager etter</strong>.<br>
+      <strong>Treff</strong> = positiv sak → kursen opp, eller negativ sak → kursen ned.
+      <strong>Bom</strong> = motsatt. Bevegelser under terskelen regnes som <strong>flat</strong> og teller ikke.
+    </p>
+    <div class="filter-rad">
+      <span style="font-size:.78rem;color:var(--muted);align-self:center;margin-right:4px">Horisont:</span>
+      <button class="filter-btn"        data-horisont="1" onclick="settTreffHorisont(this)">1 dag</button>
+      <button class="filter-btn active" data-horisont="3" onclick="settTreffHorisont(this)">3 dager</button>
+      <button class="filter-btn"        data-horisont="5" onclick="settTreffHorisont(this)">5 dager</button>
+    </div>
+    <div id="treff-innhold">
+      <div class="loading-card" style="text-align:center;padding:40px">
+        <div style="color:var(--muted);font-size:.9rem">Laster…</div>
+      </div>
+    </div>
+    <p style="font-size:.75rem;color:var(--muted);margin-top:24px;font-style:italic">
+      ⚠️ Loggen bygges opp over tid — den fylles hver gang du henter nyheter, og feedene rekker bare
+      noen dager bakover. De første dagene er tallgrunnlaget for lite til å konkludere med noe.
+      Samvariasjon er heller ikke årsak: nyheter kommer ofte <em>etter</em> at kursen har beveget seg.
+    </p>
+  </div>
+
   <!-- SAMMENLIGN -->
   <div id="tab-sammenlign" class="tab-content">
     <h2 style="margin-bottom:16px;font-size:1.1rem">Velg instrumenter å sammenligne (maks 6)</h2>
@@ -717,46 +943,20 @@
     <p style="font-size:.8rem;color:var(--muted)">Normalisert til 100 ved startdato — viser relativ avkastning.</p>
   </div>
 
-  <!-- PROGNOSE -->
-  <div id="tab-prognose" class="tab-content">
-    <h2 style="margin-bottom:8px;font-size:1.1rem">💰 Investeringsprognose</h2>
-    <p style="font-size:.85rem;color:var(--muted);margin-bottom:20px;line-height:1.6">
-      Estimerer fremtidig verdi basert på historisk avkastning (CAGR) og volatilitet for valgt instrument.<br>
-      Modellen antar log-normal avkastning. <strong>Pessimistisk</strong> = 5. persentil, <strong>forventet</strong> = median, <strong>optimistisk</strong> = 95. persentil.
-    </p>
-
-    <div class="prognose-form">
-      <div class="form-rad">
-        <label>
-          <span class="form-label">Instrument</span>
-          <select id="prognose-ticker"></select>
-        </label>
-        <label>
-          <span class="form-label">Engangsinnskudd</span>
-          <input type="number" id="prognose-belop" value="2000" min="0" step="500">
-        </label>
-        <label>
-          <span class="form-label">Månedlig sparing</span>
-          <input type="number" id="prognose-manedlig" value="1000" min="0" step="100">
-        </label>
-        <button class="btn primary" onclick="beregnPrognose()">Beregn prognose</button>
-      </div>
-    </div>
-
-    <div id="prognose-resultat" style="margin-top:24px"></div>
-
-    <p style="font-size:.75rem;color:var(--muted);margin-top:24px;font-style:italic">
-      ⚠️ Historisk avkastning er ingen garanti for fremtidig avkastning. Estimatene er en statistisk projeksjon av tidligere mønster og bør kun brukes som indikasjon.
-    </p>
-  </div>
-
-  <!-- KALKULATOR -->
+  <!-- KALKULATOR (sparemål + prognose + skatt) -->
   <div id="tab-kalkulator" class="tab-content">
+    <div class="subtabs">
+      <button class="subtab-btn active" onclick="byttUnderTab('kalkulator','sparemal',this)">🧮 Sparemål</button>
+      <button class="subtab-btn" onclick="byttUnderTab('kalkulator','prognose',this)">💰 Prognose</button>
+      <button class="subtab-btn" onclick="byttUnderTab('kalkulator','skatt',this)">🧾 Skatt</button>
+    </div>
+    <div id="sub-kalkulator-sparemal" class="subtab-content active">
     <h2 style="margin-bottom:6px;font-size:1.1rem">🧮 Spare-kalkulator med glidebane</h2>
     <p style="font-size:.82rem;color:var(--muted);margin-bottom:18px;line-height:1.6">
       Monte Carlo-simulering med konfigurerbar aksje/rente-mix. Glidebanen lar deg holde en høy aksjeandel
       tidlig (vekst), og gradvis flytte til pengemarked mot målet (beskyttelse).
     </p>
+    <div id="kalk-datavindu"></div>
     <div class="kalk-wrap">
       <div class="kalk-form">
         <h3>Mål & innskudd</h3>
@@ -836,7 +1036,8 @@
         </button>
         <p style="font-size:.7rem;color:var(--muted);margin-top:10px;line-height:1.5;font-style:italic">
           Antar 0 korrelasjon mellom aksjer og renter, log-normale månedlige avkastninger.
-          Skattefradrag/utbytte ikke inkludert. 20 000 simuleringer per beregning.
+          CAGR tolkes som totalavkastning (utbytte reinvestert) — skatt er ikke modellert.
+          20 000 simuleringer per beregning.
         </p>
       </div>
 
@@ -844,15 +1045,49 @@
         <div style="text-align:center;padding:60px;color:var(--muted)">Beregner...</div>
       </div>
     </div>
-  </div>
+  
+    </div>
 
-  <!-- SKATTEKALKULATOR -->
-  <div id="tab-skatt" class="tab-content">
+    <div id="sub-kalkulator-prognose" class="subtab-content">
+    <h2 style="margin-bottom:8px;font-size:1.1rem">💰 Investeringsprognose</h2>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:20px;line-height:1.6">
+      Estimerer fremtidig verdi basert på historisk avkastning (CAGR) og volatilitet for valgt instrument.<br>
+      Modellen antar log-normal avkastning. <strong>Pessimistisk</strong> = 5. persentil, <strong>forventet</strong> = median, <strong>optimistisk</strong> = 95. persentil.
+    </p>
+
+    <div class="prognose-form">
+      <div class="form-rad">
+        <label>
+          <span class="form-label">Instrument</span>
+          <select id="prognose-ticker"></select>
+        </label>
+        <label>
+          <span class="form-label">Engangsinnskudd</span>
+          <input type="number" id="prognose-belop" value="2000" min="0" step="500">
+        </label>
+        <label>
+          <span class="form-label">Månedlig sparing</span>
+          <input type="number" id="prognose-manedlig" value="1000" min="0" step="100">
+        </label>
+        <button class="btn primary" onclick="beregnPrognose()">Beregn prognose</button>
+      </div>
+    </div>
+
+    <div id="prognose-resultat" style="margin-top:24px"></div>
+
+    <p style="font-size:.75rem;color:var(--muted);margin-top:24px;font-style:italic">
+      ⚠️ Historisk avkastning er ingen garanti for fremtidig avkastning. Estimatene er en statistisk projeksjon av tidligere mønster og bør kun brukes som indikasjon.
+    </p>
+  
+    </div>
+
+    <div id="sub-kalkulator-skatt" class="subtab-content">
     <h2 style="margin-bottom:6px;font-size:1.1rem">🧾 Skattekalkulator</h2>
     <div class="skatt-toggle">
-      <button class="tab-btn active" id="skatt-btn-vanlig" onclick="skattSettModell('vanlig', this)">Vanlig konto (aksjonærmodellen)</button>
-      <button class="tab-btn" id="skatt-btn-ask" onclick="skattSettModell('ask', this)">Aksjesparekonto (ASK)</button>
+      <button class="filter-btn active" id="skatt-btn-vanlig" onclick="skattSettModell('vanlig', this)">Vanlig konto (aksjonærmodellen)</button>
+      <button class="filter-btn" id="skatt-btn-ask" onclick="skattSettModell('ask', this)">Aksjesparekonto (ASK)</button>
     </div>
+    <div id="skatt-kilde"></div>
     <p id="skatt-intro" style="font-size:.82rem;color:var(--muted);margin-bottom:18px;line-height:1.6">
       Beregner skatt ved salg av aksjer/aksjefond etter <strong>aksjonærmodellen</strong> (privatperson, utenfor ASK).
       Skattepliktig gevinst reduseres med ubenyttet <strong>skjermingsfradrag</strong> og oppjusteres med
@@ -940,6 +1175,8 @@
       <div class="kalk-resultat" id="skatt-resultat">
         <div style="text-align:center;padding:60px;color:var(--muted)">Fyll inn tall og beregn …</div>
       </div>
+    </div>
+  
     </div>
   </div>
 
@@ -1051,6 +1288,8 @@ let aktivFilter = "alle";
 let nyheterData = null;
 let nyhetFilter = "alle";
 let portefoljeData = null;
+let treffData = null;
+let treffHorisont = 3;
 let rapportData = null;
 let rapportChart = null;
 let portCharts = {};
@@ -1099,21 +1338,43 @@ function toast(msg) {
 }
 
 /* ── Tabs ────────────────────────────────────────────────────── */
+/* Hvilken undertab som sist var valgt, så den huskes når du bytter frem og tilbake. */
+const AKTIV_UNDERTAB = {portefolje: "beholdning", kalkulator: "sparemal"};
+
 function byttTab(navn, btn) {
-  document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
-  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll("main > .tab-content").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".tabs > .tab-btn").forEach(b => b.classList.remove("active"));
   document.getElementById("tab-" + navn).classList.add("active");
   btn.classList.add("active");
   document.getElementById("detalj-panel").classList.remove("active");
 
   if (navn === "sammenlign") byggSammenlignValg();
-  if (navn === "prognose") byggPrognoseValg();
   if (navn === "nyheter" && nyheterData === null) lastNyheter(false);
-  if (navn === "portefolje" && portefoljeData === null) lastPortefolje(false);
-  if (navn === "rapport" && rapportData === null) lastRapport();
-  if (navn === "kalkulator") kalkOppdater(false);
-  if (navn === "skatt") skattOppdater(false);
+  if (navn === "treff" && treffData === null) lastTreff(false);
   if (navn === "instrumenter") lastInstrumenter();
+  if (navn in AKTIV_UNDERTAB) lastUnderTab(navn, AKTIV_UNDERTAB[navn]);
+}
+
+function byttUnderTab(tab, under, btn) {
+  AKTIV_UNDERTAB[tab] = under;
+  document.querySelectorAll(`#tab-${tab} > .subtab-content`).forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(`#tab-${tab} > .subtabs > .subtab-btn`).forEach(b => b.classList.remove("active"));
+  document.getElementById(`sub-${tab}-${under}`).classList.add("active");
+  if (btn) btn.classList.add("active");
+  lastUnderTab(tab, under);
+}
+
+/* Lazy-lasting per undertab — samme regler som da de var egne faner. */
+function lastUnderTab(tab, under) {
+  if (tab === "portefolje") {
+    if (under === "beholdning" && portefoljeData === null) lastPortefolje(false);
+    if (under === "transaksjoner") lastTransaksjoner();
+    if (under === "rapport" && rapportData === null) lastRapport();
+  } else if (tab === "kalkulator") {
+    if (under === "sparemal") { kalkOppdater(false); lastKalkDatavindu(); }
+    if (under === "prognose") byggPrognoseValg();
+    if (under === "skatt") skattOppdater(false);
+  }
 }
 
 /* ── Filter for oversikt ─────────────────────────────────────── */
@@ -1256,7 +1517,7 @@ async function visDetalj(ticker) {
 
 function lukkDetalj() {
   document.getElementById("detalj-panel").classList.remove("active");
-  const aktivTab = document.querySelector(".tab-btn.active");
+  const aktivTab = document.querySelector(".tabs > .tab-btn.active");
   if (aktivTab) aktivTab.click();
 }
 
@@ -1554,6 +1815,174 @@ function visNyheter() {
   }).join("");
 }
 
+/* ── Treffsikkerhet ──────────────────────────────────────────── */
+function settTreffHorisont(btn) {
+  treffHorisont = parseInt(btn.dataset.horisont, 10);
+  document.querySelectorAll("#tab-treff .filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  lastTreff(false);
+}
+
+async function lastTreff(oppdater) {
+  const cont = document.getElementById("treff-innhold");
+  cont.innerHTML = `
+    <div style="text-align:center;padding:40px">
+      <div class="spinner"></div>
+      <div style="margin-top:12px;color:var(--muted);font-size:.85rem">
+        ${oppdater ? "Henter ferske nyheter og måler kursutviklingen…" : "Beregner treffsikkerhet…"}
+      </div>
+    </div>`;
+  try {
+    const url = `/api/treffsikkerhet?horisont=${treffHorisont}${oppdater ? "&oppdater=1" : ""}`;
+    const resp = await fetch(url);
+    treffData = await resp.json();
+    visTreff();
+  } catch (e) {
+    cont.innerHTML = `<p style="color:var(--danger)">Feil ved beregning: ${e.message}</p>`;
+  }
+}
+
+function treffFarge(pct) {
+  if (pct === null || pct === undefined) return "neu";
+  return pct >= 55 ? "pos" : pct <= 45 ? "neg" : "neu";
+}
+
+function pctTekst(v) {
+  return v === null || v === undefined ? "–" : `${v >= 0 ? "+" : ""}${v.toFixed(2)} %`;
+}
+
+/* Differansen mellom to prosenttall måles i prosentpoeng, ikke prosent. */
+function ppTekst(v) {
+  return v === null || v === undefined ? "–" : `${v >= 0 ? "+" : ""}${v.toFixed(2)} pp`;
+}
+
+const TREFF_UTFALL_TEKST = {treff: "✓ traff", bom: "✗ bom", flat: "flat", "nøytral_sak": "nøytral sak"};
+
+function visTreff() {
+  if (!treffData) return;
+  const cont = document.getElementById("treff-innhold");
+  if (treffData.feil) {
+    cont.innerHTML = `<p style="color:var(--danger)">${treffData.feil}</p>`;
+    return;
+  }
+  const s = treffData.samlet || {};
+  const logg = treffData.logg || {};
+  const h = treffData.horisont;
+
+  const avgjort = (s.treff || 0) + (s.bom || 0);
+  const forbehold = avgjort < 30
+    ? ` Merk at ${avgjort} avgjorte sak${avgjort === 1 ? "" : "er"} er for lite til å konkludere.`
+    : "";
+
+  let tolkning;
+  if (!avgjort) {
+    tolkning = "Ingen avgjorte saker ennå. Åpne Nyheter-fanen noen dager på rad — loggen fylles automatisk, og sakene blir målbare når kursen har rukket å bevege seg.";
+  } else if (s.edge === null || s.edge === undefined) {
+    tolkning = `${s.treffprosent} % av de avgjorte sakene pekte riktig vei. Mangler foreløpig enten positive eller negative saker til å regne ut forskjellen mellom dem.${forbehold}`;
+  } else if (s.treffprosent >= 55 && s.edge > 0) {
+    tolkning = `Sentimentet har pekt riktig vei oftere enn tilfeldig (${s.treffprosent} %), og positive saker ble i snitt fulgt av ${ppTekst(s.edge)} bedre utvikling enn negative — de to målene peker samme vei.${forbehold}`;
+  } else if (s.treffprosent <= 45 && s.edge < 0) {
+    tolkning = `Sentimentet har pekt feil vei oftere enn riktig (${s.treffprosent} %), og positive saker ble i snitt fulgt av svakere utvikling enn negative (${ppTekst(s.edge)}). Ikke uvanlig — nyheter kommer gjerne etter at kursen har reagert, og VADER scorer norske overskrifter upresist.${forbehold}`;
+  } else if (s.treffprosent >= 55 || s.treffprosent <= 45) {
+    tolkning = `De to målene spriker: retningen traff ${s.treffprosent} % av gangene, men forskjellen i snittavkastning mellom positive og negative saker er ${ppTekst(s.edge)}. Da drar noen få store utslag i motsatt retning av flertallet.${forbehold}`;
+  } else {
+    tolkning = `Rundt myntkast (${s.treffprosent} %), og forskjellen mellom positive og negative saker er ${ppTekst(s.edge)}. Ingen tydelig sammenheng i dette datagrunnlaget.${forbehold}`;
+  }
+
+  const samletHtml = `
+    <div class="treff-samlet">
+      <div class="treff-samlet-tittel">📊 Samlet fasit — ${h} handelsdag${h === 1 ? "" : "er"} etter nyheten</div>
+      <div class="treff-nokkeltall">
+        <div class="treff-tall">
+          <div class="verdi ${treffFarge(s.treffprosent)}">${s.treffprosent !== null && s.treffprosent !== undefined ? s.treffprosent + " %" : "–"}</div>
+          <div class="label">Treffsikkerhet</div>
+          <div class="hint">${s.treff || 0} traff · ${s.bom || 0} bom${s.flat ? ` · ${s.flat} flat` : ""}</div>
+        </div>
+        <div class="treff-tall">
+          <div class="verdi ${(s.snitt_positiv || 0) >= 0 ? "pos" : "neg"}">${pctTekst(s.snitt_positiv)}</div>
+          <div class="label">Etter positiv nyhet</div>
+          <div class="hint">snitt kursendring</div>
+        </div>
+        <div class="treff-tall">
+          <div class="verdi ${(s.snitt_negativ || 0) >= 0 ? "pos" : "neg"}">${pctTekst(s.snitt_negativ)}</div>
+          <div class="label">Etter negativ nyhet</div>
+          <div class="hint">snitt kursendring</div>
+        </div>
+        <div class="treff-tall">
+          <div class="verdi ${(s.edge || 0) > 0 ? "pos" : (s.edge || 0) < 0 ? "neg" : "neu"}">${ppTekst(s.edge)}</div>
+          <div class="label">Forskjell</div>
+          <div class="hint">positiv minus negativ</div>
+        </div>
+        <div class="treff-tall">
+          <div class="verdi">${logg.saker_totalt || 0}</div>
+          <div class="label">Saker i loggen</div>
+          <div class="hint">${s.venter || 0} venter på kursdata</div>
+        </div>
+      </div>
+      <div class="treff-tolkning">${tolkning}</div>
+    </div>`;
+
+  const medData = (treffData.instrumenter || []).filter(d => d.vurdert > 0);
+  if (medData.length === 0) {
+    cont.innerHTML = samletHtml + `
+      <p class="nyhet-ingen">Ingen instrumenter har målbare saker ennå. Trykk «Hent ferske nyheter» for å begynne å bygge loggen.</p>`;
+    return;
+  }
+
+  const kortHtml = medData.map(d => {
+    const avgjort = d.treff + d.bom;
+    const total = Math.max(d.vurdert, 1);
+    const sakerHtml = (d.saker || []).map(sak => `
+      <div class="treff-sak ${sak.utfall}">
+        <div style="flex:1">
+          ${sak.url ? `<a href="${sak.url}" target="_blank" rel="noopener">${sak.tittel}</a>` : sak.tittel}
+          <div class="treff-sak-meta">
+            ${sak.kilde || "?"} · ${sak.dato.substring(0, 10)}${sak.dato_antatt ? " (antatt)" : ""} ·
+            <span class="${sak.etikett === "positiv" ? "pos" : sak.etikett === "negativ" ? "neg" : "neu"}">${sak.etikett}</span>
+            · ${sak.fra_dato} → ${sak.til_dato}
+          </div>
+        </div>
+        <div class="treff-sak-endring ${sak.endring_pct >= 0 ? "pos" : "neg"}">
+          ${pctTekst(sak.endring_pct)}
+          <span class="treff-sak-utfall">${TREFF_UTFALL_TEKST[sak.utfall] || sak.utfall}</span>
+        </div>
+      </div>`).join("");
+
+    return `
+      <div class="treff-kort">
+        <div class="treff-kort-header">
+          <div>
+            <div class="treff-navn">${d.flagg || ""} ${d.navn}</div>
+            <div class="treff-ticker">${d.ticker} · ${d.antall_logget} saker logget</div>
+          </div>
+          <div class="treff-prosent ${treffFarge(d.treffprosent)}">
+            ${d.treffprosent !== null ? d.treffprosent + " %" : "–"}
+            <span class="under">${avgjort} avgjorte sak${avgjort === 1 ? "" : "er"}</span>
+          </div>
+        </div>
+        <div class="treff-bar">
+          <div class="tb-treff" style="width:${(d.treff / total) * 100}%"></div>
+          <div class="tb-flat"  style="width:${((d.vurdert - d.treff - d.bom) / total) * 100}%"></div>
+          <div class="tb-bom"   style="width:${(d.bom / total) * 100}%"></div>
+        </div>
+        <div class="treff-stats">
+          <span class="pos">✓ ${d.treff} traff</span>
+          <span class="neg">✗ ${d.bom} bom</span>
+          <span class="neu">● ${d.vurdert - d.treff - d.bom} uavklart</span>
+          ${d.venter ? `<span class="neu">⏳ ${d.venter} venter</span>` : ""}
+        </div>
+        <div class="treff-snitt-rad">
+          <span><span class="m">Etter positiv:</span> <strong class="${(d.snitt_positiv || 0) >= 0 ? "pos" : "neg"}">${pctTekst(d.snitt_positiv)}</strong> <span class="m">(${d.antall_positiv})</span></span>
+          <span><span class="m">Etter negativ:</span> <strong class="${(d.snitt_negativ || 0) >= 0 ? "pos" : "neg"}">${pctTekst(d.snitt_negativ)}</strong> <span class="m">(${d.antall_negativ})</span></span>
+          <span><span class="m">Snitt alle:</span> <strong>${pctTekst(d.snitt_alle)}</strong></span>
+        </div>
+        ${sakerHtml ? `<details class="treff-detalj"><summary>Vis de ${(d.saker || []).length} nyeste målte sakene</summary>${sakerHtml}</details>` : ""}
+      </div>`;
+  }).join("");
+
+  cont.innerHTML = samletHtml + kortHtml;
+}
+
 /* ── Prognose ────────────────────────────────────────────────── */
 function byggPrognoseValg() {
   const sel = document.getElementById("prognose-ticker");
@@ -1818,33 +2247,292 @@ function oppdaterAlleBeregninger() {
 function oppdaterTotaler() {
   if (!portefoljeData) return;
   const beholdning = lesBeholdning();
-  let total = 0, kostTotal = 0, valuta = "NOK";
+
+  // Grupper per valuta. Å summere NOK og USD til ett tall gir et beløp som ikke
+  // finnes — appen veksler ikke, så hver valuta må stå for seg.
+  const perValuta = new Map();          // valuta → {verdi, kost}
   portefoljeData.forEach(d => {
     const b = beholdning[d.ticker] || {};
     const andeler = parseFloat(b.andeler) || 0;
     const snittpris = parseFloat(b.snittpris) || 0;
     if (andeler > 0 && d.pris) {
-      total += d.pris * andeler;
-      kostTotal += snittpris * andeler;
-      valuta = d.valuta || valuta;
+      const v = d.valuta || "?";
+      const rad = perValuta.get(v) || {verdi: 0, kost: 0};
+      rad.verdi += d.pris * andeler;
+      rad.kost  += snittpris * andeler;
+      perValuta.set(v, rad);
     }
   });
+
   const totalEl = document.getElementById("port-total");
   const gevEl = document.getElementById("port-gevinst");
-  if (total > 0) {
-    totalEl.textContent = ` ${fmtBelop(total, valuta)}`;
-    if (kostTotal > 0) {
-      const gevinst = total - kostTotal;
-      const gevPct = (gevinst / kostTotal) * 100;
-      const cls = gevinst >= 0 ? "gev-pos" : "gev-neg";
-      gevEl.innerHTML = `<span class="${cls}">${gevinst >= 0 ? "+" : ""}${fmtBelop(gevinst, valuta)} (${gevPct >= 0 ? "+" : ""}${gevPct.toFixed(1)}%)</span>`;
-    } else {
-      gevEl.textContent = "";
-    }
-  } else {
+  const advarselEl = document.getElementById("port-valuta-advarsel");
+
+  if (perValuta.size === 0) {
     totalEl.textContent = " – (legg inn andeler under)";
     gevEl.textContent = "";
+    advarselEl.innerHTML = "";
+    return;
   }
+
+  const valutaer = [...perValuta.keys()].sort();
+  totalEl.textContent = " " + valutaer
+    .map(v => fmtBelop(perValuta.get(v).verdi, v))
+    .join("  +  ");
+
+  // Gevinst vises bare for valutaer der snittpris faktisk er registrert.
+  const gevinstBiter = valutaer
+    .filter(v => perValuta.get(v).kost > 0)
+    .map(v => {
+      const {verdi, kost} = perValuta.get(v);
+      const gevinst = verdi - kost;
+      const pct = (gevinst / kost) * 100;
+      const cls = gevinst >= 0 ? "gev-pos" : "gev-neg";
+      const fortegn = gevinst >= 0 ? "+" : "";
+      return `<span class="${cls}">${fortegn}${fmtBelop(gevinst, v)} (${fortegn}${pct.toFixed(1)}%)</span>`;
+    });
+  gevEl.innerHTML = gevinstBiter.join(" · ");
+
+  advarselEl.innerHTML = valutaer.length > 1
+    ? `<div class="valuta-advarsel">⚠️ Porteføljen har ${valutaer.length} valutaer
+         (${valutaer.join(", ")}). Beløpene vises hver for seg — appen veksler ikke,
+         så det finnes ingen samlet totalverdi her.</div>`
+    : "";
+}
+
+/* ── Transaksjoner ───────────────────────────────────────────── */
+let transData = null;
+/* Konkrete inntektsår fra et realisert salg. Settes kun av skattFraSalg og
+   nullstilles så snart brukeren redigerer feltene selv. */
+let skattArListe = null;
+
+function byggTransValg() {
+  const sel = document.getElementById("trans-ticker");
+  if (!sel || sel.options.length) return;
+  sel.innerHTML = ALLE.map(i =>
+    `<option value="${i.ticker}">${i.flagg || ""} ${i.navn} (${i.ticker})</option>`).join("");
+  const dato = document.getElementById("trans-dato");
+  if (dato && !dato.value) dato.value = new Date().toISOString().slice(0, 10);
+}
+
+async function lagreTransaksjon() {
+  const status = document.getElementById("trans-status");
+  const tall = id => {
+    const v = document.getElementById(id).value;
+    return v === "" ? null : Number(v);
+  };
+  const body = {
+    ticker: document.getElementById("trans-ticker").value,
+    type:   document.getElementById("trans-type").value,
+    dato:   document.getElementById("trans-dato").value,
+    antall: tall("trans-antall"),
+    kurs:   tall("trans-kurs"),
+    gebyr:  tall("trans-gebyr") || 0,
+  };
+  if (!body.antall || body.kurs === null) {
+    status.textContent = "⚠️ Fyll inn antall og kurs";
+    status.style.color = "var(--warn)";
+    return;
+  }
+  status.textContent = "Lagrer…";
+  status.style.color = "var(--muted)";
+  try {
+    const resp = await fetch("/api/transaksjoner", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(body),
+    });
+    const d = await resp.json();
+    if (d.feil) {
+      status.textContent = "⚠️ " + d.feil;
+      status.style.color = "var(--danger)";
+      return;
+    }
+    status.textContent = "✅ Lagt til";
+    status.style.color = "var(--accent2)";
+    document.getElementById("trans-antall").value = "";
+    document.getElementById("trans-kurs").value = "";
+    document.getElementById("trans-gebyr").value = "";
+    setTimeout(() => { if (status.textContent === "✅ Lagt til") status.textContent = ""; }, 2000);
+    await lastTransaksjoner();
+    portefoljeData = null;           // beholdningen utledes på nytt neste gang
+  } catch (e) {
+    status.textContent = "⚠️ " + e.message;
+    status.style.color = "var(--danger)";
+  }
+}
+
+async function slettTransaksjon(ticker, id, beskrivelse) {
+  if (!confirm(`Slette denne transaksjonen?\n\n${beskrivelse}`)) return;
+  try {
+    const resp = await fetch(`/api/transaksjoner/${encodeURIComponent(ticker)}/${encodeURIComponent(id)}`,
+                             {method: "DELETE"});
+    const d = await resp.json();
+    if (d.feil) { toast("⚠️ " + d.feil); return; }
+    await lastTransaksjoner();
+    portefoljeData = null;
+  } catch (e) {
+    toast("Feil: " + e.message);
+  }
+}
+
+async function lastTransaksjoner() {
+  byggTransValg();
+  const cont = document.getElementById("trans-innhold");
+  cont.innerHTML = `<div style="text-align:center;padding:40px"><div class="spinner"></div>
+    <div style="margin-top:12px;color:var(--muted);font-size:.85rem">Beregner posisjoner…</div></div>`;
+  try {
+    const [posResp, txResp] = await Promise.all([
+      fetch("/api/posisjoner"),
+      fetch("/api/transaksjoner"),
+    ]);
+    transData = {pos: await posResp.json(), tx: await txResp.json()};
+    visTransaksjoner();
+  } catch (e) {
+    cont.innerHTML = `<p style="color:var(--danger)">Feil: ${e.message}</p>`;
+  }
+}
+
+function visTransaksjoner() {
+  const cont = document.getElementById("trans-innhold");
+  if (!transData) return;
+  const posisjoner = transData.pos.posisjoner || [];
+  if (posisjoner.length === 0) {
+    cont.innerHTML = `<p class="nyhet-ingen">Ingen transaksjoner registrert ennå.
+      Legg inn det første kjøpet ditt over — også gamle kjøp, de gir historikk å regne på.</p>`;
+    return;
+  }
+
+  const totalt = transData.pos.totalt || {};
+  const valutaer = Object.keys(totalt).sort();
+  const sumHtml = `
+    <div class="treff-samlet">
+      <div class="treff-samlet-tittel">📦 Samlet fra transaksjoner</div>
+      ${valutaer.length > 1 ? `<div class="valuta-advarsel" style="margin-bottom:14px">
+        ⚠️ ${valutaer.length} valutaer (${valutaer.join(", ")}) — vises hver for seg, ingen veksling.</div>` : ""}
+      ${valutaer.map(v => {
+        const t = totalt[v];
+        const samlet = t.realisert + t.urealisert;
+        return `
+        <div class="treff-nokkeltall" style="margin-bottom:10px">
+          <div class="treff-tall"><div class="verdi">${fmtBelop(t.verdi, v)}</div>
+            <div class="label">Dagens verdi</div></div>
+          <div class="treff-tall"><div class="verdi">${fmtBelop(t.kostpris, v)}</div>
+            <div class="label">Kostpris (FIFO)</div></div>
+          <div class="treff-tall"><div class="verdi ${t.urealisert >= 0 ? "pos" : "neg"}">${fmtBelop(t.urealisert, v)}</div>
+            <div class="label">Urealisert</div></div>
+          <div class="treff-tall"><div class="verdi ${t.realisert >= 0 ? "pos" : "neg"}">${fmtBelop(t.realisert, v)}</div>
+            <div class="label">Realisert</div></div>
+          <div class="treff-tall"><div class="verdi ${samlet >= 0 ? "pos" : "neg"}">${fmtBelop(samlet, v)}</div>
+            <div class="label">Samlet gevinst</div></div>
+        </div>`;
+      }).join("")}
+    </div>`;
+
+  const kortHtml = posisjoner.map(p => {
+    const v = p.valuta || "";
+    const tx = (transData.tx[p.ticker] || {}).transaksjoner || [];
+    const radHtml = tx.slice().reverse().map(t => {
+      const belop = t.antall * t.kurs + (t.type === "kjøp" ? t.gebyr : -t.gebyr);
+      const besk = `${t.type} ${t.antall} @ ${t.kurs} den ${t.dato}`;
+      return `
+        <tr>
+          <td>${t.dato}</td>
+          <td><span class="trans-merke ${t.type}">${t.type}</span></td>
+          <td class="h">${t.antall}</td>
+          <td class="h">${fmtBelop(t.kurs, "")}</td>
+          <td class="h">${t.gebyr ? fmtBelop(t.gebyr, "") : "–"}</td>
+          <td class="h">${fmtBelop(belop, v)}</td>
+          <td class="h"><button class="trans-slett" title="Slett"
+            onclick="slettTransaksjon('${p.ticker}','${t.id}',${JSON.stringify(besk).replace(/"/g, "&quot;")})">✕</button></td>
+        </tr>`;
+    }).join("");
+
+    const salgHtml = (p.realiserte_salg || []).length ? `
+      <details class="treff-detalj" style="margin-top:10px">
+        <summary>Realiserte salg (${p.realiserte_salg.length}) — inngangsverdi etter FIFO</summary>
+        ${p.realiserte_salg.map(s => `
+          <div class="treff-sak ${s.gevinst >= 0 ? "treff" : "bom"}">
+            <div style="flex:1">
+              ${s.dato} · ${s.antall} andeler @ ${fmtBelop(s.kurs, v)}
+              <div class="treff-sak-meta">
+                Inngangsverdi ${fmtBelop(s.inngangsverdi, v)} · salgssum ${fmtBelop(s.salgssum, v)}
+                · eiertid ${s.eiertid_ar} år (${s.eiertid_dager} dager)
+                · ${s.skjermingsar} skjermingsår${s.skjerming_blandet ? " (blandet)" : ""}
+              </div>
+              <button class="btn" style="margin-top:8px;font-size:.7rem;padding:4px 10px"
+                onclick='skattFraSalg(${JSON.stringify({
+                  navn: p.navn, ticker: p.ticker, valuta: v,
+                  dato: s.dato, antall: s.antall,
+                  inngangsverdi: s.inngangsverdi, salgssum: s.salgssum,
+                  skjermingsar: s.skjermingsar, blandet: s.skjerming_blandet,
+                  ar_liste: s.skjermingsar_liste || [],
+                }).replace(/'/g, "&#39;")})'>🧾 Beregn skatt på dette salget</button>
+            </div>
+            <div class="treff-sak-endring ${s.gevinst >= 0 ? "pos" : "neg"}">
+              ${s.gevinst >= 0 ? "+" : ""}${fmtBelop(s.gevinst, v)}
+              <span class="treff-sak-utfall">${s.gevinst_pct != null ? s.gevinst_pct + " %" : ""}</span>
+            </div>
+          </div>`).join("")}
+      </details>` : "";
+
+    const advarselHtml = (p.advarsler || []).length
+      ? `<div class="valuta-advarsel">⚠️ ${p.advarsler.join(" ")}</div>` : "";
+
+    return `
+      <div class="trans-kort">
+        <div class="trans-kort-topp">
+          <div>
+            <div class="trans-navn">${p.flagg || ""} ${p.navn}</div>
+            <div class="trans-ticker">${p.ticker} · ${p.antall_transer} transaksjoner · første kjøp ${p.forste_kjop}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:1.25rem;font-weight:700" class="${p.irr_pct == null ? "" : p.irr_pct >= 0 ? "pos" : "neg"}">
+              ${p.irr_pct == null ? "–" : (p.irr_pct >= 0 ? "+" : "") + p.irr_pct + " %"}
+            </div>
+            <div style="font-size:.68rem;color:var(--muted)">din avkastning per år</div>
+          </div>
+        </div>
+        ${advarselHtml}
+        <div class="trans-noekkel">
+          <div class="boks"><div class="label">Andeler</div><div class="verdi">${p.andeler}</div></div>
+          <div class="boks"><div class="label">Snittpris</div><div class="verdi">${fmtBelop(p.snittpris, "")}</div></div>
+          <div class="boks"><div class="label">Kostpris</div><div class="verdi">${fmtBelop(p.kostpris, v)}</div></div>
+          <div class="boks"><div class="label">Verdi nå</div><div class="verdi">${p.verdi == null ? "–" : fmtBelop(p.verdi, v)}</div></div>
+          <div class="boks"><div class="label">Urealisert</div>
+            <div class="verdi ${(p.urealisert_gevinst || 0) >= 0 ? "pos" : "neg"}">
+              ${p.urealisert_gevinst == null ? "–" : fmtBelop(p.urealisert_gevinst, v)}</div></div>
+          <div class="boks"><div class="label">Realisert</div>
+            <div class="verdi ${p.realisert_gevinst >= 0 ? "pos" : "neg"}">${fmtBelop(p.realisert_gevinst, v)}</div></div>
+        </div>
+        ${salgHtml}
+        <details class="treff-detalj" style="margin-top:10px">
+          <summary>Alle ${tx.length} transaksjoner</summary>
+          <table class="trans-tabell">
+            <thead><tr>
+              <th>Dato</th><th>Type</th><th class="h">Antall</th><th class="h">Kurs</th>
+              <th class="h">Gebyr</th><th class="h">Beløp</th><th></th>
+            </tr></thead>
+            <tbody>${radHtml}</tbody>
+          </table>
+        </details>
+      </div>`;
+  }).join("");
+
+  cont.innerHTML = sumHtml + kortHtml;
+}
+
+/* ── Datavindu: hvor mye historikk ligger bak tallene? ───────── */
+const DATAVINDU_IKON = {"ok": "📏", "kort": "⚠️", "svært kort": "⚠️"};
+
+function datavinduBanner(p) {
+  if (!p) return "";
+  return `
+    <div class="datavindu ${p.niva.replace(/\s+/g, "-")}">
+      <strong>${DATAVINDU_IKON[p.niva] || "📏"} Datagrunnlag: ${p.ar} år</strong>
+      (${p.fra} → ${p.til}, ${p.handelsdager} handelsdager).
+      ${p.merknad}
+    </div>`;
 }
 
 /* ── Risiko-panel ────────────────────────────────────────────── */
@@ -1922,6 +2610,7 @@ function renderRisikoPanel(d) {
       <div class="risiko-undertittel">
         Beregnet på daglige log-avkastninger. Sharpe forutsetter ${d.risikofri_rente_pct}% risikofri rente.
       </div>
+      ${datavinduBanner(r.periode)}
       <div class="risiko-grid">
         <div class="risiko-kort ${cagrCls}">
           <div class="label">Årlig avkastning (CAGR)</div>
@@ -2311,10 +3000,35 @@ async function kalkResetPortefolje() {
     const d = await resp.json();
     if (d.feil) { toast("Kunne ikke hente portefølje-stats"); return; }
     document.getElementById("kalk-aksje-vol").value = (d.aksje_vol * 100).toFixed(1);
-    toast(`Vol oppdatert: ${(d.aksje_vol*100).toFixed(1)}% (din portefølje, ${d.dager} dager)`);
+    toast(`Vol oppdatert: ${(d.aksje_vol*100).toFixed(1)}% (din portefølje)`);
+    visKalkDatavindu(d);
     kalkOppdater(false);
   } catch (e) {
     toast("Feil: " + e.message);
+  }
+}
+
+/* Vinduet bak porteføljevolatiliteten hører hjemme på skjermen, ikke i en
+   toast som forsvinner — det er hele grunnlaget for «pessimistisk» utfall. */
+function visKalkDatavindu(d) {
+  const el = document.getElementById("kalk-datavindu");
+  if (!el) return;
+  if (!d || d.feil || !d.periode) { el.innerHTML = ""; return; }
+  const cagr = (d.aksje_hist_cagr * 100).toFixed(1);
+  el.innerHTML = datavinduBanner(d.periode) +
+    `<p class="kalk-datavindu-note">
+       Porteføljen din ga ${cagr} % årlig i dette vinduet. Det tallet er bevisst
+       <em>ikke</em> satt inn som CAGR-forutsetning — en enkelt oppgangsperiode
+       er ikke en prognose. Bruk det som referanse, ikke som anslag.
+     </p>`;
+}
+
+async function lastKalkDatavindu() {
+  try {
+    const resp = await fetch("/api/portefolje-stats");
+    visKalkDatavindu(await resp.json());
+  } catch (e) {
+    /* Datavinduet er tilleggsinfo — kalkulatoren fungerer uten. */
   }
 }
 
@@ -2405,7 +3119,7 @@ function renderRapport(d) {
     </div>
 
     <p style="font-size:.72rem;color:var(--muted);margin-top:14px;font-style:italic">
-      Prisavkastning uten utbytte. Fondskurser kan være forsinket inntil 15 min og oppdateres sjeldnere enn aksjer (derav færre punkter i grafen).
+      Totalavkastning — kursene er utbytte- og splittjustert, så reinvestert utbytte er med. Fondskurser kan være forsinket inntil 15 min og oppdateres sjeldnere enn aksjer (derav færre punkter i grafen).
     </p>`;
 
   // 30-dagers graf
@@ -2463,9 +3177,85 @@ function skattFmtKr(v) {
   return Math.round(v).toLocaleString("no-NO") + " kr";
 }
 
+/* ── Fra realisert salg til skattekalkulatoren ───────────────── */
+function skattFraSalg(s) {
+  // Hopp til Kalkulator → Skatt, og tving «vanlig konto»: et FIFO-realisert
+  // salg er aksjonærmodellen. Ligger andelene på ASK, gjelder andre regler og
+  // brukeren må bytte selv.
+  const toppKnapp = [...document.querySelectorAll(".tabs > .tab-btn")]
+    .find(b => b.textContent.includes("Kalkulator"));
+  if (toppKnapp) toppKnapp.click();
+  const underKnapp = [...document.querySelectorAll("#tab-kalkulator > .subtabs > .subtab-btn")]
+    .find(b => b.textContent.includes("Skatt"));
+  if (underKnapp) underKnapp.click();
+  const vanligKnapp = document.getElementById("skatt-btn-vanlig");
+  if (vanligKnapp && skattModell !== "vanlig") skattSettModell("vanlig", vanligKnapp);
+
+  skattArListe = s.ar_liste && s.ar_liste.length ? s.ar_liste : null;
+  document.getElementById("skatt-inngang").value = s.inngangsverdi;
+  document.getElementById("skatt-salg").value = s.salgssum;
+  document.getElementById("skatt-ar").value = s.skjermingsar;
+  document.getElementById("skatt-override").value = "";
+
+  const kilde = document.getElementById("skatt-kilde");
+  if (kilde) {
+    kilde.innerHTML = `
+      <div class="skatt-kilde-boks">
+        <strong>📥 Hentet fra transaksjonsloggen</strong><br>
+        ${s.navn} (${s.ticker}) — salg ${s.dato} av ${s.antall} andeler.
+        Inngangsverdien er beregnet etter FIFO fra dine faktiske kjøp, inkludert kjøpsgebyr.
+        Eierårene er antall årsskifter andelene var eid, ikke antall 365-dagersperioder —
+        det er årsskiftene som gir skjermingsfradrag.
+        ${s.blandet ? `<br><span style="color:var(--warn)">⚠️ Salget spenner lots med ulikt
+          antall skjermingsår. Feltet viser det andelsvektede snittet, som er en
+          tilnærming — skjerming beregnes strengt tatt per andel.</span>` : ""}
+        <br><em>Kontroller skjermingsrenten før du stoler på tallet — den fastsettes
+        årlig av Skatteetaten og varierer mellom år.</em>
+      </div>`;
+  }
+  skattOppdater(false);
+  document.getElementById("tab-kalkulator").scrollIntoView({behavior: "smooth", block: "start"});
+}
+
+function nullstillSkattKilde() {
+  const kilde = document.getElementById("skatt-kilde");
+  if (kilde) kilde.innerHTML = "";
+  // Årsrekken hørte til det forhåndsutfylte salget; etter manuell endring
+  // gjelder den ikke lenger, og satsfeltet tar over igjen.
+  skattArListe = null;
+}
+
+/* Oppdeling av skjermingen per inntektsår — bare relevant når konkrete år er
+   kjent (dvs. når tallene kom fra et realisert salg). */
+function skattSatsTabell(d) {
+  if (!d.satser_per_ar || !d.skjerming_per_ar || !d.skjerming_per_ar.length) return "";
+  const rader = d.skjerming_per_ar.map(x => `
+    <tr>
+      <td>${x.ar}</td>
+      <td class="h">${x.sats_pct} %${x.offisiell ? "" : " *"}</td>
+      <td class="h">${skattFmtKr(x.grunnlag)}</td>
+      <td class="h">${skattFmtKr(x.belop)}</td>
+    </tr>`).join("");
+  const mangler = d.skjerming_per_ar.some(x => !x.offisiell);
+  return `
+    <div class="kalk-sanns-bar" style="margin-top:14px">
+      <div class="kalk-sanns-tittel">Skjerming per inntektsår — offisielle satser</div>
+      <table class="trans-tabell">
+        <thead><tr><th>År</th><th class="h">Sats</th><th class="h">Grunnlag</th><th class="h">Skjerming</th></tr></thead>
+        <tbody>${rader}</tbody>
+      </table>
+      <p style="font-size:.72rem;color:var(--muted);margin-top:10px;line-height:1.5">
+        Satsene er hentet fra Skatteetaten og gjelder aksjer (ikke enkeltpersonforetak).
+        Grunnlaget vokser hvert år med fjorårets ubenyttede skjerming.
+        ${mangler ? "<br><span style='color:var(--warn)'>* Året mangler offisiell sats — " +
+                    "renten fastsettes i januar året etter, så siste kjente sats er brukt.</span>" : ""}
+      </p>
+    </div>`;
+}
+
 function skattSettModell(modell, btn) {
   skattModell = modell;
-  document.querySelectorAll(".skatt-toggle .tab-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".skatt-toggle .filter-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   document.getElementById("skatt-form-vanlig").style.display = modell === "vanlig" ? "" : "none";
   document.getElementById("skatt-form-ask").style.display    = modell === "ask" ? "" : "none";
@@ -2474,6 +3264,9 @@ function skattSettModell(modell, btn) {
 }
 
 function skattOppdater(debounce) {
+  // debounce=true betyr at brukeren skriver i et felt. Da stemmer ikke lenger
+  // «hentet fra transaksjonsloggen», så notisen fjernes.
+  if (debounce) nullstillSkattKilde();
   clearTimeout(skattTimer);
   skattTimer = setTimeout(skattKjor, debounce ? 350 : 0);
 }
@@ -2504,6 +3297,7 @@ async function skattKjor() {
     };
     if (override !== "") body.skjerming_override = Number(override);
   }
+  if (skattArListe && skattArListe.length) body.skjermingsar_liste = skattArListe;
 
   try {
     const resp = await fetch(endepunkt, {
@@ -2540,8 +3334,12 @@ function skattRender(d) {
       <div class="verdi">${skattFmtKr(Math.abs(d.skatt))}</div></div>`;
 
   const skjermingRad = d.skjerming_per_ar.length
-    ? rad(`Skjermingsfradrag (${d.ar} år · ${d.skjermingsrente_pct}%)`, skattFmtKr(d.skjerming_total))
+    ? rad(d.satser_per_ar
+            ? `Skjermingsfradrag (${d.ar} år · offisiell sats per år)`
+            : `Skjermingsfradrag (${d.ar} år · ${d.skjermingsrente_pct}%)`,
+          skattFmtKr(d.skjerming_total))
     : rad("Skjermingsfradrag (oppgitt)", skattFmtKr(d.skjerming_total));
+  const satsTabell = skattSatsTabell(d);
 
   document.getElementById("skatt-resultat").innerHTML = `
     <div class="kalk-stats">
@@ -2564,6 +3362,7 @@ function skattRender(d) {
       ${rad(`× Skattesats (${d.skattesats_pct}%) = skatt`, skattFmtKr(d.skatt), true)}
       ${!tap && d.ubenyttet_skjerming > 0 ? rad("Ubenyttet skjerming (tapt ved salg)", skattFmtKr(d.ubenyttet_skjerming)) : ""}
     </div>
+    ${satsTabell}
 
     <p style="font-size:.75rem;color:var(--muted);margin-top:4px;line-height:1.6">
       Effektiv skattesats på aksjeinntekt er <strong>${d.effektiv_sats_pct}%</strong>
@@ -2581,8 +3380,12 @@ function skattRenderAsk(d) {
       <div class="verdi">${skattFmtKr(Math.abs(d.skatt))}</div></div>`;
 
   const skjermingRad = d.skjerming_per_ar.length
-    ? rad(`Skjermingsfradrag (${d.ar} år · ${d.skjermingsrente_pct}%)`, skattFmtKr(d.skjerming_total))
+    ? rad(d.satser_per_ar
+            ? `Skjermingsfradrag (${d.ar} år · offisiell sats per år)`
+            : `Skjermingsfradrag (${d.ar} år · ${d.skjermingsrente_pct}%)`,
+          skattFmtKr(d.skjerming_total))
     : rad("Skjermingsfradrag (oppgitt)", skattFmtKr(d.skjerming_total));
+  const satsTabell = skattSatsTabell(d);
 
   // Gevinstdel-raden: ved avslutning kan den være negativ (tap).
   const gevinstRad = d.avslutter
@@ -2615,6 +3418,7 @@ function skattRenderAsk(d) {
       ${!tap && d.ubenyttet_skjerming > 0 ? rad("Ubenyttet skjerming (overføres til neste år)", skattFmtKr(d.ubenyttet_skjerming)) : ""}
       ${d.gjenstaende_verdi > 0 ? rad("Gjenstående verdi på kontoen", skattFmtKr(d.gjenstaende_verdi)) : ""}
     </div>
+    ${satsTabell}
 
     <p style="font-size:.75rem;color:var(--muted);margin-top:4px;line-height:1.6">
       ${d.gevinst_uttak <= 0 && !tap

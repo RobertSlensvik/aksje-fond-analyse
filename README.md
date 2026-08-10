@@ -81,9 +81,24 @@ pip install -r requirements.txt
 python app.py
 ```
 
-**Docker (anbefalt for prod-lignende kjøring):**
+**Docker (anbefalt for kontinuerlig drift):**
 ```bash
-docker compose up --build
+cp .env.example .env     # sett UID/GID til `id -u` / `id -g` på Linux
+docker compose up -d --build
+```
+
+To tjenester starter: webappen (gunicorn) og en bakgrunnsjobb som fyller
+nyhetsloggen hver 4. time. Loggen er det eneste i appen som akkumulerer verdi
+over tid — feedene er rullerende vinduer, så saker som ikke fanges forsvinner.
+
+**Kjører du på Ubuntu, les [DEPLOY.md](DEPLOY.md)** — den dekker `UID`/`GID` mot
+bind-mountet `data/` (den klassiske Linux-fella), tidssone, og at appen ikke har
+autentisering.
+
+Hentejobben kan også kjøres uten Docker, f.eks. fra cron eller systemd:
+```bash
+python -m analyse.hent              # én runde
+python -m analyse.hent --loop 4h    # evig løkke
 ```
 
 `data/`-mappen opprettes automatisk og bind-mountes inn i containeren —
@@ -93,12 +108,41 @@ personlige filer (beholdning, brukerinstrumenter, porteføljevalg) persisteres p
 
 ## Funksjoner
 
-### 💼 Min portefølje
+Appen har sju hovedfaner. To av dem samler flere verktøy under undertabs:
+**Min portefølje** (Beholdning · Transaksjoner · Månedsrapport) og
+**Kalkulator** (Sparemål · Prognose · Skatt).
+
+> **Datavindu:** alle risikotall viser nå hvilken periode de bygger på, og advarer
+> når historikken er kortere enn en full markedssyklus. Norske fond på Yahoo
+> (`0P…`-tickere) har typisk bare 3–4 år, og da er volatilitet og drawdown
+> systematisk undervurdert.
+
+### 💼 Min portefølje → Beholdning
 - Sparkline-graf per fond (1Y)
 - Beholdnings-input (andeler + snittpris) lagret atomisk i `beholdning.json`
 - Total verdi + gevinst på tvers
 - **Korrelasjonsmatrise** med fargekodet heatmap og automatisk tolkning av snitt-korrelasjon
 - Topp nyheter med sentiment-score per fond
+
+> **Om avkastningstallene:** yfinance leverer utbyttejusterte sluttkurser
+> (`auto_adjust=True` er default fra og med 0.2.51), så all avkastning i appen er
+> **totalavkastning** — reinvestert utbytte og splitter er med. Målt på AAPL over to år
+> utgjør utbyttet 1,29 prosentpoeng; for utbyttefond er avviket større.
+
+### 💼 Min portefølje → Transaksjoner
+- Registrer kjøp og salg; kostpris, beholdning og gevinst utledes automatisk
+- **FIFO** (først inn, først ut) som norske skatteregler krever — salg spiser eldste lot først, og hvert salg får riktig inngangsverdi og eiertid
+- Kjøpsgebyr inngår i inngangsverdien, salgsgebyr trekkes fra salgssummen
+- **Pengevektet avkastning (XIRR)** per instrument — hva *du* har tjent, ikke hva fondet gjorde. Med månedlig sparing er de to sjelden like
+- Skiller realisert og urealisert gevinst, summert per valuta
+- **Beregn skatt direkte fra et realisert salg** — én knapp fyller inngangsverdi, salgssum og eierår inn i skattekalkulatoren, med en notis om hvor tallene kom fra. Eierår er antall *årsskifter* andelene var eid (det er 31.12-datoene som gir skjermingsfradrag), ikke antall 365-dagersperioder
+- Lagres i `data/transaksjoner.json`. Additivt: har et instrument transaksjoner brukes de utledede tallene, ellers gjelder manuelt registrert beholdning som før
+
+### 💼 Min portefølje → Månedsrapport
+- Hvordan porteføljen gikk forrige kalendermåned — per instrument og totalt
+- Vektet etter beholdning (markedsverdi) med kronebeløp, eller lik vekt i prosent
+- Beste/svakeste instrument i måneden
+- Graf over porteføljens utvikling de siste 30 dagene
 
 ### 📊 Oversikt
 - Alle instrumentene dine (norske + internasjonale) lastes parallelt
@@ -106,38 +150,50 @@ personlige filer (beholdning, brukerinstrumenter, porteføljevalg) persisteres p
 - Kort med pris, dagsendring, markedsverdi, P/E, utbytte
 
 ### 📰 Nyheter & sentiment-prognose
-- Aggregerer nyhetsoverskrifter fra E24 (RSS) + Yahoo Finance per instrument
+- Aggregerer nyhetsoverskrifter fra ni RSS-kilder + Yahoo Finance per instrument
+  - **Norske:** E24, DN, DN Børs, NRK
+  - **Engelske:** CNBC Markets, CNBC Finance, MarketWatch, Yahoo Finance, Investing.com
+  - **Google News-søk per instrument** — søker på instrumentets egne søkeord og finner treff måneder tilbake. Eneste kilde som gir dekning for norske fond, og den når overskrifter fra Finansavisen og finanswatch som ikke har åpen RSS
+- Finansavisen, Hegnar og Kapital er utelatt som faste kilder — RSS-endepunktene ligger bak Zephr-paywall (404 etter redirect)
 - VADER-sentiment scorer hver sak til positiv/nøytral/negativ
 - Hete saker (siste 7 dager) markert
 - "Topp 3 hete" — instrumenter med mest nyhetsstøy rangert etter ferskhet og intensitet
+
+### 🎯 Treffsikkerhet — traff nyhetene?
+- Hver nyhetssak lagres permanent i `data/nyhetslogg.json` med sentiment-etiketten sin, siden feedene bare rekker noen dager bakover
+- Måler faktisk kursbevegelse fra siste sluttkurs **før** saken til sluttkurs 1, 3 eller 5 handelsdager etter
+- **Treff** = positiv sak → kursen opp, eller negativ sak → kursen ned. Bevegelser under ±0,3 % regnes som flat og teller ikke
+- Snitt kursendring etter positive vs. negative saker, og differansen mellom dem i prosentpoeng
+- Per instrument + samlet fasit, med saksliste som viser hva som traff og hva som bommet
+- Loggen fylles automatisk hver gang nyheter hentes — datagrunnlaget bygges opp over tid
+
+> **Om språk og signal:** VADER er trent på engelsk. Målt på egen logg gir engelske kilder
+> et retningssignal (positiv/negativ) i 70 % av sakene, norske i bare 5 % — resten scores
+> nøytralt og teller ikke i treffsikkerheten. Norske kilder øker altså dekningen langt mer
+> enn de øker antallet avgjorte saker.
 
 ### ⚖️ Sammenlign
 - Normaliserer kursutvikling til 100 ved startdato
 - Side-om-side opp til 6 instrumenter
 - Periode 1M til 5Y
 
-### 💰 Prognose
-- Monte Carlo med log-normal månedlig avkastning
-- Engangsinnskudd + valgfri månedlig sparing
-- Persentiler: 5 (pessimistisk), 50 (forventet), 95 (optimistisk)
-- 1, 3, 5 og 10 år
-- `?seed=random` for ny simulering hver gang (default deterministisk)
-
-### 🧮 Kalkulator (glidebane)
+### 🧮 Kalkulator → Sparemål (glidebane)
 - Live Monte Carlo (20 000 simuleringer) med slidere
 - Aksjer/renter-mix konfigurerbart over tid
 - Stresstest: påtving 25% krasj siste 6 mnd
 - Sannsynlighet for å nå mål (100%, 80%, 50%)
 - Median-bane, aksjeandel-utvikling og fordeling av sluttverdier
 
-### 📋 Månedsrapport
-- Hvordan porteføljen gikk forrige kalendermåned — per instrument og totalt
-- Vektet etter beholdning (markedsverdi) med kronebeløp, eller lik vekt i prosent
-- Beste/svakeste instrument i måneden
-- Graf over porteføljens utvikling de siste 30 dagene
+### 🧮 Kalkulator → Prognose
+- Monte Carlo med log-normal månedlig avkastning
+- Engangsinnskudd + valgfri månedlig sparing
+- Persentiler: 5 (pessimistisk), 50 (forventet), 95 (optimistisk)
+- 1, 3, 5 og 10 år
+- `?seed=random` for ny simulering hver gang (default deterministisk)
 
-### 🧾 Skattekalkulator
+### 🧮 Kalkulator → Skatt
 - To modeller: **vanlig konto** (aksjonærmodellen) og **aksjesparekonto (ASK)**
+- **Offisiell skjermingsrente per inntektsår** (2007–2025) hentet fra [Skatteetaten](https://www.skatteetaten.no/satser/skjermingsrente-for-aksjer-og-enkeltpersonforetak/). Satsen har variert fra 0,4 % (2016) til 3,9 % (2024), så én felles sats over flere eierår gir merkbart avvik. Kommer tallene fra et realisert salg, brukes riktig sats for hvert år automatisk og oppdelingen vises i en tabell
 - Realisert gevinst/tap, skjermingsfradrag (renters rente på kostprisen) eller oppgi akkumulert skjerming direkte
 - ASK: skattefritt uttak av innskudd, skatt kun på gevinst over innskudd, hele/delvise uttak
 - Oppjustering (×1,72) og 22 % skatt → effektiv sats 37,84 %
@@ -166,6 +222,11 @@ personlige filer (beholdning, brukerinstrumenter, porteføljevalg) persisteres p
 | `/api/korrelasjon` | GET | Korrelasjonsmatrise (default = portefølje) |
 | `/api/marked` | GET | Markedstermometer (indekser, VIX, valuta, råvarer) |
 | `/api/nyheter` | GET | Sentiment-analyse for alle instrumenter |
+| `/api/transaksjoner` | GET/POST | Les alle, eller registrer én. Body: `{ticker, type, dato, antall, kurs, gebyr?}` |
+| `/api/transaksjoner/<ticker>/<id>` | DELETE | Slett én transaksjon |
+| `/api/skjermingsrenter` | GET | Offisielle skjermingsrenter per inntektsår |
+| `/api/posisjoner` | GET | Utledet beholdning per ticker: FIFO-kostpris, realisert/urealisert gevinst, XIRR |
+| `/api/treffsikkerhet` | GET | Sentiment vs. faktisk kurs. `?horisont=1\|3\|5`, `?terskel=0.3`, `?tickere=A,B`, `?oppdater=1` |
 | `/api/portefolje` | GET | Min portefølje med 1Y historikk og nyheter |
 | `/api/rapport` | GET | Månedsrapport: forrige måned + 30-dagers utvikling |
 | `/api/chat/status` | GET | Om AI-assistenten er aktivert (API-nøkkel satt) |
@@ -254,7 +315,29 @@ Yahoo Finance-tickere:
 
 ## Tester
 
-> 📦 **TODO:** pytest-suite kommer i neste runde.
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+185 tester over de rene regnemodulene — de som gir tall folk faktisk handler på:
+
+| Fil | Dekker |
+|---|---|
+| `tests/test_skatt.py` | Aksjonærmodellen og ASK: skjerming som renters rente, skjerming som ikke kan skape tap, ubenyttet skjerming som går tapt ved realisasjon, oppjustert tapsfradrag, delvise og fulle ASK-uttak |
+| `tests/test_kalkulator.py` | Glidebane og Monte Carlo: lukket-form-fasit ved vol = 0, determinisme per seed, at CAGR tolkes som median (ikke gjennomsnitt), at stresstesten trekker ned nøyaktig 25 % |
+| `tests/test_treffsikkerhet.py` | Måling mot handelsdager (ikke kalenderdager), helgesaker, saker som venter på kursdata, terskel-grensetilfeller, aggregering per instrument og samlet |
+| `tests/test_transaksjoner.py` | FIFO-lots (med eksplisitt vakt mot å skli tilbake til snittkostpris), gebyrhåndtering, salg over flere lots, salg uten dekning, eiertid per lot, XIRR mot kjente fasitverdier, og at skjermingsår teller årsskifter framfor 365-dagersperioder |
+| `tests/test_hent.py` | Bakgrunnsjobben: intervall-parsing, at én feilende ticker ikke velter runden, exit-koder for systemd |
+| `tests/test_risiko.py` | Drawdown og CAGR mot lukket form, Sharpe som `None` ved null volatilitet, og at datavindu-tersklene følger config |
+
+Testene er hermetiske: ingen nettverkskall, og de rører ikke `data/`.
+Stokastisk kode testes deterministisk der det går (vol = 0 mot lukket form) og
+ellers på egenskaper som må holde uansett trekning.
+
+Testene avdekket én reell feil, nå rettet: `glidebane_vekter` startet
+nedtrappingen én måned for sent fordi `np.linspace` tar med start-endepunktet.
+`test_glidebane_har_nøyaktig_hold_aar_på_startandelen` er regresjonsvakten.
 
 ## Veikart
 
@@ -265,7 +348,8 @@ Yahoo Finance-tickere:
 - [x] Modulær arkitektur (Flask blueprints)
 - [x] Docker-deploy
 - [x] Brukeradministrerte instrumenter via UI (blank template-klar)
-- [ ] Test-suite (pytest)
+- [x] Test-suite (pytest) — 185 tester på skatt, kalkulator, risiko, treffsikkerhet, transaksjoner og hentejobben
+- [x] Transaksjonslogg med FIFO-kostpris og pengevektet avkastning
 - [ ] GitHub Actions CI
 - [ ] Strukturert logging (JSON)
 - [ ] Prometheus-metrics endpoint

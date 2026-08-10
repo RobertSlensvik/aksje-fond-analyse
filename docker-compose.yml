@@ -1,18 +1,54 @@
+# Kjør: docker compose up -d --build
+#
+# Alt konfigureres via .env (kopier .env.example). De to viktige på Linux:
+#   UID/GID   — må matche eieren av data/ (`id -u` / `id -g`), ellers nektes skriving
+#   BIND_ADDR — 0.0.0.0 = tilgjengelig på nettverket (default), 127.0.0.1 = kun via SSH-tunnel
+
+x-felles: &felles
+  build:
+    context: .
+    args:
+      UID: ${UID:-1000}
+      GID: ${GID:-1000}
+  environment:
+    TZ: ${TZ:-Europe/Oslo}
+    # Valgfri AI-assistent. Uten nøkkel er chatboblen grå og deaktivert.
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  volumes:
+    # Bind-mount data/-katalogen for persistens. Katalog-mount er nødvendig
+    # fordi enkeltfil-mount blokkerer os.replace() (atomic rename).
+    - ./data:/app/data
+  restart: unless-stopped
+
 services:
+  # ── Webappen ──────────────────────────────────────────────────────────────
   analyse:
-    build: .
-    container_name: aksje-fond-analyse
+    <<: *felles
+    # Ingen container_name: Docker navngir den <prosjekt>-analyse-1. Et fast navn
+    # gir navnekollisjon mot gamle containere, og hindrer at du kjører appen fra
+    # to kataloger samtidig.
     ports:
-      - "5001:5001"
-    volumes:
-      # Bind-mount data/-katalogen for persistens. Katalog-mount er nødvendig
-      # fordi enkeltfil-mount blokkerer os.replace() (atomic rename) på macOS.
-      # data/ opprettes automatisk hvis den ikke finnes.
-      - ./data:/app/data
-    restart: unless-stopped
+      # BIND_ADDR styrer hvem som kan nå appen. Appen har INGEN autentisering,
+      # så på et delt nettverk bør du enten sette 127.0.0.1 og bruke SSH-tunnel,
+      # eller slippe inn din egen IP med ufw. Se DEPLOY.md.
+      - "${BIND_ADDR:-0.0.0.0}:${PORT:-5001}:5001"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as r; r.urlopen('http://localhost:5001/').close()"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  # ── Bakgrunnsjobb: fyller nyhetsloggen ────────────────────────────────────
+  #
+  # Loggen er det eneste som akkumulerer verdi over tid — feedene er rullerende
+  # vinduer, så saker som ikke fanges forsvinner. Denne kjører uavhengig av om
+  # noen bruker webappen. ~37 HTTP-kall per runde; hver 4. time er rikelig.
+  henter:
+    <<: *felles
+    command: ["python", "-m", "analyse.hent", "--loop", "${HENT_INTERVALL:-4h}"]
+    # Imaget har en HEALTHCHECK som pinger webserveren. Denne tjenesten kjører
+    # ingen webserver, så uten `disable` blir containeren stemplet «unhealthy»
+    # for alltid — og skjuler ekte problemer i støyen.
+    healthcheck:
+      disable: true

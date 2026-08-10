@@ -15,7 +15,14 @@ def glidebane_vekter(n_mnd, start_aksje, slutt_aksje, hold_aar):
     resten = n_mnd - hold_mnd
     hode = np.full(hold_mnd, start_aksje, dtype=np.float64)
     if resten > 0:
-        hale = np.linspace(start_aksje, slutt_aksje, resten)
+        if hold_mnd > 0:
+            # Holdeperioden dekker allerede start_aksje. linspace tar med
+            # start-endepunktet, så uten å droppe det ville siste holdemåned
+            # blitt gjentatt: hold_aar=5 ga 61 måneder på startandelen, ikke 60.
+            hale = np.linspace(start_aksje, slutt_aksje, resten + 1)[1:]
+        else:
+            # Ren lineær glidebane — her skal banen spenne hele intervallet.
+            hale = np.linspace(start_aksje, slutt_aksje, resten)
         return np.concatenate([hode, hale])
     return hode
 

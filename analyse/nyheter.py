@@ -1,15 +1,24 @@
 """Nyhetsaggregering og sentiment-analyse (E24 RSS + Yahoo Finance, VADER)."""
 
+import html
 import re
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote_plus
 
 import feedparser
 import yfinance as yf
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-from .config import RSS_KILDER
+from .config import (
+    GOOGLE_NEWS_AKTIV,
+    GOOGLE_NEWS_MAKS,
+    GOOGLE_NEWS_URL,
+    RSS_KILDER,
+)
+from .nyhetslogg import logg_saker
 
 
 _HTML_TAG = re.compile(r"<[^>]+>")
@@ -37,6 +46,19 @@ def retning(snitt):
     return {"retning": "nøytral", "tekst": "→ Nøytral", "farge": "neu"}
 
 
+def _rens(tekst):
+    """Fjern HTML-tagger og dekod entiteter (&nbsp;, &amp; osv.)."""
+    return html.unescape(_HTML_TAG.sub("", tekst or "")).replace("\xa0", " ").strip()
+
+
+def _kilde_navn(e):
+    """Publisist fra <source>-elementet. Google News setter dette per sak."""
+    kilde = e.get("source")
+    if isinstance(kilde, dict):
+        return (kilde.get("title") or "").strip()
+    return ""
+
+
 def _hent_rss(url):
     """Hent og normaliser RSS-saker fra én feed, med TTL-cache."""
     now = time.time()
@@ -50,10 +72,22 @@ def _hent_rss(url):
         return []
     saker = []
     for e in feed.entries:
-        tittel = (e.get("title") or "").strip()
+        tittel = _rens(e.get("title"))
         if not tittel:
             continue
-        sammendrag = _HTML_TAG.sub("", e.get("summary", "") or "").strip()
+        sammendrag = _rens(e.get("summary"))
+        publisist = _kilde_navn(e)
+
+        # Google News henger " - Publisist" på tittelen og gjentar tittelen som
+        # sammendrag. Uten opprydding ville duplikater slippe gjennom dedupe og
+        # sentiment-ordene blitt talt to ganger.
+        if publisist:
+            suffiks = f" - {publisist}"
+            if tittel.endswith(suffiks):
+                tittel = tittel[: -len(suffiks)].strip()
+            if sammendrag.replace("  ", " ").startswith(tittel):
+                sammendrag = ""
+
         if e.get("published_parsed"):
             dato = datetime(*e.published_parsed[:6], tzinfo=timezone.utc).isoformat()
         else:
@@ -63,34 +97,71 @@ def _hent_rss(url):
             "sammendrag": sammendrag,
             "dato":       dato,
             "url":        e.get("link", ""),
+            "publisist":  publisist,
         })
     with _RSS_LOCK:
         _RSS_CACHE[url] = (now, saker)
     return saker
 
 
-def _rss_treff(søkeord, maks=6):
-    """Finn RSS-saker som matcher minst ett søkeord (case-insensitivt, ordgrense)."""
+def _forhandshent(urls):
+    """Fyll cachen for flere feeder parallelt — ellers blir det ti serielle kall."""
+    manglende = [u for u in dict.fromkeys(urls) if u]
+    if not manglende:
+        return
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        list(ex.map(_hent_rss, manglende))
+
+
+def _google_news_url(søkeord):
+    """Søke-URL for ett søkeord. Flerordsuttrykk siteres for presisjon."""
+    q = f'"{søkeord}"' if " " in søkeord else søkeord
+    return GOOGLE_NEWS_URL.format(q=quote_plus(q))
+
+
+def _som_sak(sak, kilde_navn):
+    """Normaliser en rå feed-sak til formatet resten av appen bruker."""
+    score, etikett = scor(f"{sak['tittel']}. {sak['sammendrag']}".strip())
+    return {
+        "tittel":     sak["tittel"],
+        "sammendrag": sak["sammendrag"][:240],
+        "kilde":      sak.get("publisist") or kilde_navn,
+        "dato":       sak["dato"],
+        "url":        sak["url"],
+        "score":      score,
+        "etikett":    etikett,
+    }
+
+
+def _rss_treff(søkeord):
+    """Alle RSS-saker som gjelder et instrument, nyeste først.
+
+    Redaksjonelle feeder matches mot søkeordene. Google News-treff slipper
+    matchingen — søket er allerede filteret, og en frase som "Nordea Global
+    Dividend" står sjelden ordrett i en overskrift som likevel handler om det.
+    """
     if not søkeord:
         return []
+
+    gn_kilder = ([(s, _google_news_url(s)) for s in søkeord[:4]]
+                 if GOOGLE_NEWS_AKTIV else [])
+    _forhandshent([u for _, u in RSS_KILDER] + [u for _, u in gn_kilder])
+
     mønstre = [re.compile(rf"\b{re.escape(s)}\b", re.IGNORECASE) for s in søkeord]
     treff = []
+
     for kilde_navn, url in RSS_KILDER:
         for sak in _hent_rss(url):
             tekst = f"{sak['tittel']} {sak['sammendrag']}"
             if any(p.search(tekst) for p in mønstre):
-                score, etikett = scor(f"{sak['tittel']}. {sak['sammendrag']}")
-                treff.append({
-                    "tittel":     sak["tittel"],
-                    "sammendrag": sak["sammendrag"][:240],
-                    "kilde":      kilde_navn,
-                    "dato":       sak["dato"],
-                    "url":        sak["url"],
-                    "score":      score,
-                    "etikett":    etikett,
-                })
+                treff.append(_som_sak(sak, kilde_navn))
+
+    for _, url in gn_kilder:
+        for sak in _hent_rss(url)[:GOOGLE_NEWS_MAKS]:
+            treff.append(_som_sak(sak, "Google News"))
+
     treff.sort(key=lambda s: s["dato"], reverse=True)
-    return treff[:maks]
+    return treff
 
 
 def hent_nyheter_for(item, maks=8):
@@ -136,7 +207,17 @@ def hent_nyheter_for(item, maks=8):
             saker.append(s)
             sett_titler.add(s["tittel"].lower())
 
-    return saker
+    # Loggfør ALT vi fant, også måneder gamle Google News-treff — de er straks
+    # målbare mot kurshistorikken og er hovedgevinsten for treffsikkerheten.
+    try:
+        logg_saker(item["ticker"], saker)
+    except Exception:
+        pass
+
+    # ...men returner bare de ferskeste. Ellers ville gamle saker dratt
+    # dagens sentiment-snitt i Nyheter-fanen.
+    saker.sort(key=lambda s: s["dato"] or "", reverse=True)
+    return saker[:maks]
 
 
 def hete_siste_uke(saker, logger=None):

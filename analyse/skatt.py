@@ -7,32 +7,61 @@ deretter med oppjusteringsfaktoren før alminnelig skattesats. Tap gir fradrag
 ved realisasjon går tapt (kan ikke overføres til andre aksjer).
 """
 
-from .config import OPPJUSTERINGSFAKTOR, SKATTESATS, SKJERMINGSRENTE_DEFAULT
+from .config import (
+    OPPJUSTERINGSFAKTOR,
+    SKATTESATS,
+    SKJERMINGSRENTE_DEFAULT,
+    SKJERMINGSRENTER,
+)
 
 
-def akkumulert_skjerming(inngangsverdi, ar, skjermingsrente):
-    """Akkumulert ubenyttet skjermingsfradrag etter `ar` hele eierår.
+def skjermingsrente_for(ar, fallback=SKJERMINGSRENTE_DEFAULT):
+    """Offisiell skjermingsrente for et inntektsår, ellers `fallback`.
+
+    Renten fastsettes av Skatteetaten i januar året etter inntektsåret, så det
+    nyeste året mangler alltid en offisiell sats.
+    """
+    return SKJERMINGSRENTER.get(int(ar), fallback)
+
+
+def akkumulert_skjerming(inngangsverdi, ar, skjermingsrente, ar_liste=None):
+    """Akkumulert ubenyttet skjermingsfradrag.
 
     Skjermingen beregnes per år på skjermingsgrunnlaget (= inngangsverdi +
     tidligere ubenyttet skjerming) og legges til grunnlaget året etter når den
-    ikke er brukt mot utbytte. Med konstant rente og uten utbytte gir det:
+    ikke er brukt mot utbytte.
 
-        skjerming = inngangsverdi · ((1 + rente)^år − 1)
+    `ar_liste` er konkrete inntektsår, f.eks. [2023, 2024]. Da brukes den
+    offisielle satsen for hvert enkelt år — satsen har variert fra 0,4 % (2016)
+    til 3,9 % (2024), så én felles sats over flere år gir merkbart avvik. Uten
+    `ar_liste` brukes `skjermingsrente` for alle `ar` år, som før.
 
-    Returnerer en liste med årlig skjerming (for visning) og totalsummen.
+    Returnerer (detaljer, total), der detaljer er en liste med
+    {ar, sats_pct, grunnlag, belop} — én per år.
     """
     grunnlag = max(0.0, inngangsverdi)
-    per_ar = []
-    for _ in range(max(0, int(ar))):
-        skjerming = grunnlag * skjermingsrente
-        per_ar.append(round(skjerming, 2))
-        grunnlag += skjerming
-    return per_ar, round(sum(per_ar), 2)
+    ar_ene = list(ar_liste) if ar_liste is not None else [None] * max(0, int(ar))
+
+    detaljer = []
+    for inntektsar in ar_ene:
+        sats = skjermingsrente if inntektsar is None else skjermingsrente_for(
+            inntektsar, fallback=skjermingsrente)
+        belop = grunnlag * sats
+        detaljer.append({
+            "ar":       inntektsar,
+            "sats_pct": round(sats * 100, 3),
+            "grunnlag": round(grunnlag, 2),
+            "belop":    round(belop, 2),
+            "offisiell": inntektsar is not None and int(inntektsar) in SKJERMINGSRENTER,
+        })
+        grunnlag += belop
+
+    return detaljer, round(sum(d["belop"] for d in detaljer), 2)
 
 
 def beregn_skatt(inngangsverdi, salgssum, ar=0,
                  skjermingsrente=SKJERMINGSRENTE_DEFAULT,
-                 skjerming_override=None):
+                 skjerming_override=None, skjermingsar_liste=None):
     """Beregn skatt på realisert gevinst/tap etter aksjonærmodellen.
 
     Parametre:
@@ -53,7 +82,7 @@ def beregn_skatt(inngangsverdi, salgssum, ar=0,
         skjerming_per_ar = []
     else:
         skjerming_per_ar, skjerming_total = akkumulert_skjerming(
-            inngangsverdi, ar, skjermingsrente)
+            inngangsverdi, ar, skjermingsrente, ar_liste=skjermingsar_liste)
 
     raa_gevinst = salgssum - inngangsverdi
 
@@ -79,9 +108,12 @@ def beregn_skatt(inngangsverdi, salgssum, ar=0,
         "raa_gevinst":         round(raa_gevinst, 2),
         "er_tap":              raa_gevinst < 0,
         "skjermingsrente_pct": round(skjermingsrente * 100, 3),
-        "ar":                  int(ar),
+        "ar":                  len(skjerming_per_ar) if skjermingsar_liste else int(ar),
         "skjerming_total":     round(skjerming_total, 2),
         "skjerming_per_ar":    skjerming_per_ar,
+        "satser_per_ar":       bool(skjermingsar_liste),
+        "alle_satser_offisielle": bool(skjerming_per_ar) and all(
+            d.get("offisiell") for d in skjerming_per_ar),
         "brukt_skjerming":     round(brukt_skjerming, 2),
         "ubenyttet_skjerming": round(ubenyttet_skjerming, 2),
         "skattepliktig":       round(skattepliktig, 2),
@@ -98,7 +130,7 @@ def beregn_skatt(inngangsverdi, salgssum, ar=0,
 
 def beregn_skatt_ask(innskudd, verdi, uttak=None, ar=0,
                      skjermingsrente=SKJERMINGSRENTE_DEFAULT,
-                     skjerming_override=None):
+                     skjerming_override=None, skjermingsar_liste=None):
     """Beregn skatt ved uttak fra aksjesparekonto (ASK).
 
     På ASK kan du kjøpe og selge skattefritt inne på kontoen. Skatt utløses
@@ -122,7 +154,7 @@ def beregn_skatt_ask(innskudd, verdi, uttak=None, ar=0,
         skjerming_per_ar = []
     else:
         skjerming_per_ar, skjerming_total = akkumulert_skjerming(
-            innskudd, ar, skjermingsrente)
+            innskudd, ar, skjermingsrente, ar_liste=skjermingsar_liste)
 
     urealisert_gevinst = verdi - innskudd
     avslutter = uttak >= verdi  # Tømmer kontoen → realiserer evt. tap
@@ -157,9 +189,12 @@ def beregn_skatt_ask(innskudd, verdi, uttak=None, ar=0,
         "skattefritt_uttak":   round(skattefritt_uttak, 2),
         "gevinst_uttak":       round(gevinst_uttak, 2),
         "skjermingsrente_pct": round(skjermingsrente * 100, 3),
-        "ar":                  int(ar),
+        "ar":                  len(skjerming_per_ar) if skjermingsar_liste else int(ar),
         "skjerming_total":     round(skjerming_total, 2),
         "skjerming_per_ar":    skjerming_per_ar,
+        "satser_per_ar":       bool(skjermingsar_liste),
+        "alle_satser_offisielle": bool(skjerming_per_ar) and all(
+            d.get("offisiell") for d in skjerming_per_ar),
         "brukt_skjerming":     round(brukt_skjerming, 2),
         "ubenyttet_skjerming": round(ubenyttet_skjerming, 2),
         "skattepliktig":       round(skattepliktig, 2),

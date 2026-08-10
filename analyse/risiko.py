@@ -1,4 +1,11 @@
-"""Risikomål: Sharpe, drawdown, volatilitet og porteføljens historiske stats."""
+"""Risikomål: Sharpe, drawdown, volatilitet og porteføljens historiske stats.
+
+Alle målene beskriver vinduet de er regnet på, ikke instrumentet generelt. Et
+fond med fire års historikk fra 2022 har ikke opplevd et eneste ordentlig
+bjørnemarked, og volatiliteten blir tilsvarende lav. Derfor returnerer
+funksjonene her alltid `periode`-metadata, slik at UI-et kan vise hvor tynt
+grunnlaget er i stedet for å presentere tallene som absolutte.
+"""
 
 import math
 
@@ -6,8 +13,38 @@ import numpy as np
 import pandas as pd
 
 from .cache import hent_historikk
-from .config import RISIKOFRI_RENTE
+from .config import DATAVINDU_KORT_AR, DATAVINDU_SVAERT_KORT_AR, RISIKOFRI_RENTE
 from .instrumenter import portefolje_tickere
+
+
+def vurder_datavindu(ar, handelsdager, fra=None, til=None):
+    """Beskriv hvor mye historikk et tall bygger på, og hvor mye det betyr.
+
+    `niva` er "ok", "kort" eller "svært kort" — UI-et bruker det til å velge
+    hvor kraftig advarselen skal være.
+    """
+    if ar is None:
+        return None
+    if ar < DATAVINDU_SVAERT_KORT_AR:
+        niva = "svært kort"
+        merknad = (f"Bare {ar:.1f} års historikk — for lite til å si noe om risiko. "
+                   "Tallene beskriver en enkelt markedsfase.")
+    elif ar < DATAVINDU_KORT_AR:
+        niva = "kort"
+        merknad = (f"{ar:.1f} års historikk dekker ikke en full markedssyklus. "
+                   "Verken finanskrisen (2008) eller koronafallet (2020) er med, "
+                   "så volatilitet og drawdown er trolig undervurdert.")
+    else:
+        niva = "ok"
+        merknad = f"{ar:.1f} års historikk — dekker minst én full markedssyklus."
+    return {
+        "fra":           fra,
+        "til":           til,
+        "handelsdager":  handelsdager,
+        "ar":            round(ar, 1),
+        "niva":          niva,
+        "merknad":       merknad,
+    }
 
 
 def beregn_risiko(priser):
@@ -48,6 +85,11 @@ def beregn_risiko(priser):
         "tid_i_dd_dager":   tid_i_dd_dager,
         "drawdown_serie":   [round(float(x) * 100, 2) for x in drawdown],
         "drawdown_datoer":  [str(d.date()) for d in drawdown.index],
+        "periode":          vurder_datavindu(
+            ar, len(priser),
+            fra=str(priser.index[0].date()),
+            til=str(priser.index[-1].date()),
+        ),
     }
 
 
@@ -74,4 +116,15 @@ def portefolje_aksje_stats():
     port_daglig = (log_ret * (1 / n)).sum(axis=1)
     ann_vol = float(port_daglig.std() * math.sqrt(252))
     hist_cagr = float(math.exp(port_daglig.mean() * 252) - 1)
-    return {"vol": ann_vol, "hist_cagr": hist_cagr, "dager": int(len(df))}
+
+    # Overlappet begrenses av det korteste fondet — det er dette vinduet
+    # kalkulatorens default-volatilitet faktisk stammer fra.
+    ar = max((df.index[-1] - df.index[0]).days, 1) / 365.25
+    return {
+        "vol":        ann_vol,
+        "hist_cagr":  hist_cagr,
+        "dager":      int(len(df)),
+        "periode":    vurder_datavindu(ar, int(len(df)),
+                                       fra=str(df.index[0].date()),
+                                       til=str(df.index[-1].date())),
+    }

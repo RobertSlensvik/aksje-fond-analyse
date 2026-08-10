@@ -1,7 +1,9 @@
 """Månedsrapport for porteføljen: forrige kalendermåned + siste 30 dager.
 
-Avkastning regnes i hvert instruments egen valuta (prisavkastning, uten
-utbytte). Har brukeren registrert beholdning (andeler), vektes totalen etter
+Avkastning regnes i hvert instruments egen valuta som *totalavkastning*:
+yfinance leverer utbyttejusterte sluttkurser (`auto_adjust=True` er default
+fra og med yfinance 0.2.51), så reinvestert utbytte og splitter er med i
+tallene. Har brukeren registrert beholdning (andeler), vektes totalen etter
 markedsverdi og kronebeløp vises; ellers brukes lik vekt og indeks (base 100).
 Kryss-valuta-summer er en tilnærming og flagges med `flervaluta`.
 """

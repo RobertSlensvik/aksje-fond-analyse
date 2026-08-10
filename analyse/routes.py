@@ -11,7 +11,16 @@ from flask import Blueprint, current_app, jsonify, render_template, request
 from .beholdning import les_beholdning, skriv_beholdning
 from .cache import hent_historikk
 from .chat import chat_konfigurert, chat_svar
-from .config import DEFAULT_BENCH, PERIODER, RISIKOFRI_RENTE, SKJERMINGSRENTE_DEFAULT
+from .config import (
+    DEFAULT_BENCH,
+    PERIODER,
+    RISIKOFRI_RENTE,
+    SISTE_KJENTE_SKJERMINGSAR,
+    SKJERMINGSRENTE_DEFAULT,
+    SKJERMINGSRENTER,
+    TREFF_HORISONT_DEFAULT,
+    TREFF_TERSKEL_PCT,
+)
 from .info import hent_info
 from .instrumenter import (
     aksjer,
@@ -27,9 +36,19 @@ from .instrumenter import (
 from .kalkulator import glidebane_vekter, monte_carlo
 from .marked import hent_markedstemperatur
 from .nyheter import hent_nyheter_for, hete_siste_uke, retning
+from .nyhetslogg import logg_status
 from .rapport import lag_rapport
 from .risiko import beregn_risiko, portefolje_aksje_stats
 from .skatt import beregn_skatt, beregn_skatt_ask
+from .transaksjoner import (
+    beregn_posisjon,
+    fjern as fjern_transaksjon,
+    legg_til as legg_til_transaksjon,
+    les_alle as les_alle_transaksjoner,
+    pengevektet_avkastning,
+    tickere_med_transaksjoner,
+)
+from .treffsikkerhet import hent_treffsikkerhet
 
 
 bp = Blueprint("api", __name__)
@@ -250,6 +269,39 @@ def api_nyheter():
     return jsonify({"instrumenter": instrumenter, "hete": hete})
 
 
+# ─── Treffsikkerhet (sentiment vs. faktisk kurs) ────────────────────────────
+
+@bp.route("/api/treffsikkerhet")
+def api_treffsikkerhet():
+    """Hvor ofte gikk kursen faktisk i retningen nyhetene pekte?
+
+    Query: ?horisont=1|3|5 (handelsdager), ?terskel=0.3 (prosent),
+    ?tickere=A,B (default alle), ?oppdater=1 (hent ferske nyheter først).
+    """
+    try:
+        horisont = int(request.args.get("horisont", TREFF_HORISONT_DEFAULT))
+    except (TypeError, ValueError):
+        horisont = TREFF_HORISONT_DEFAULT
+    try:
+        terskel = max(0.0, min(10.0, float(request.args.get("terskel", TREFF_TERSKEL_PCT))))
+    except (TypeError, ValueError):
+        terskel = TREFF_TERSKEL_PCT
+
+    tickere_param = request.args.get("tickere", "")
+    tickere = [t.strip() for t in tickere_param.split(",") if t.strip()] or None
+
+    # Fyll loggen med ferske saker først hvis brukeren ber om det.
+    if request.args.get("oppdater") in ("1", "true", "ja"):
+        katalog = [i for i in alle_instrumenter()
+                   if not tickere or i["ticker"] in set(tickere)]
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            list(ex.map(hent_nyheter_for, katalog))
+
+    data = hent_treffsikkerhet(horisont=horisont, terskel=terskel, tickere=tickere)
+    data["logg"] = logg_status()
+    return jsonify(data)
+
+
 # ─── Beholdning ─────────────────────────────────────────────────────────────
 
 @bp.route("/api/beholdning", methods=["GET"])
@@ -281,6 +333,91 @@ def api_beholdning_post():
     except Exception as e:
         return jsonify({"feil": f"Kunne ikke lagre: {e}"}), 500
     return jsonify({"ok": True, "beholdning": rensa})
+
+
+# ─── Transaksjoner ──────────────────────────────────────────────────────────
+
+@bp.route("/api/transaksjoner", methods=["GET"])
+def api_transaksjoner_get():
+    """Alle transaksjoner gruppert på ticker, med navn fra katalogen."""
+    katalog = {i["ticker"]: i for i in alle_instrumenter()}
+    alle = les_alle_transaksjoner()
+    ut = {}
+    for tk, rader in alle.items():
+        meta = katalog.get(tk, {})
+        ut[tk] = {
+            "navn":          meta.get("navn", tk),
+            "flagg":         meta.get("flagg", ""),
+            "ukjent":        tk not in katalog,
+            "transaksjoner": sorted(rader, key=lambda t: (t["dato"], t.get("id", ""))),
+        }
+    return jsonify(ut)
+
+
+@bp.route("/api/transaksjoner", methods=["POST"])
+def api_transaksjoner_post():
+    """Registrer én transaksjon. Body: {ticker, type, dato, antall, kurs, gebyr?, notat?}"""
+    data = request.get_json(silent=True) or {}
+    try:
+        rad = legg_til_transaksjon(data)
+    except ValueError as e:
+        return jsonify({"feil": str(e)}), 400
+    except OSError as e:
+        return jsonify({"feil": f"Kunne ikke lagre: {e}"}), 500
+    return jsonify({"ok": True, "transaksjon": rad}), 201
+
+
+@bp.route("/api/transaksjoner/<ticker>/<trans_id>", methods=["DELETE"])
+def api_transaksjoner_delete(ticker, trans_id):
+    try:
+        fjern_transaksjon(ticker, trans_id)
+    except ValueError as e:
+        return jsonify({"feil": str(e)}), 404
+    return jsonify({"ok": True})
+
+
+@bp.route("/api/posisjoner")
+def api_posisjoner():
+    """Utledet beholdning per ticker: FIFO-kostpris, gevinst og pengevektet avkastning."""
+    katalog = {i["ticker"]: i for i in alle_instrumenter()}
+    tickere = tickere_med_transaksjoner()
+    if not tickere:
+        return jsonify({"posisjoner": [], "totalt": {}})
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        infoer = dict(zip(tickere, ex.map(hent_info, tickere)))
+
+    posisjoner = []
+    for tk in tickere:
+        info = infoer.get(tk) or {}
+        pris = info.get("pris")
+        pos = beregn_posisjon(tk, pris_naa=pris)
+        if pos is None:
+            continue
+        meta = katalog.get(tk, {})
+        pos["navn"] = meta.get("navn", info.get("navn", tk))
+        pos["flagg"] = meta.get("flagg", "")
+        pos["valuta"] = info.get("valuta", "")
+        pos["pris"] = pris
+        irr = pengevektet_avkastning(tk, pris)
+        pos["irr_pct"] = round(irr * 100, 2) if irr is not None else None
+        posisjoner.append(pos)
+
+    # Summer per valuta — kroner og dollar hører ikke sammen.
+    totalt = {}
+    for p in posisjoner:
+        v = p.get("valuta") or "?"
+        rad = totalt.setdefault(v, {"verdi": 0.0, "kostpris": 0.0,
+                                    "realisert": 0.0, "urealisert": 0.0})
+        rad["verdi"] += p.get("verdi") or 0.0
+        rad["kostpris"] += p.get("kostpris") or 0.0
+        rad["realisert"] += p.get("realisert_gevinst") or 0.0
+        rad["urealisert"] += p.get("urealisert_gevinst") or 0.0
+    for rad in totalt.values():
+        for k in rad:
+            rad[k] = round(rad[k], 2)
+
+    return jsonify({"posisjoner": posisjoner, "totalt": totalt})
 
 
 # ─── Min portefølje ─────────────────────────────────────────────────────────
@@ -387,6 +524,7 @@ def api_portefolje_stats():
         "aksje_vol":       round(stats["vol"], 4),
         "aksje_hist_cagr": round(stats["hist_cagr"], 4),
         "dager":           stats["dager"],
+        "periode":         stats["periode"],
     })
 
 
@@ -493,6 +631,21 @@ def api_rapport():
 
 # ─── Skattekalkulator (aksjonærmodellen) ────────────────────────────────────
 
+def _les_ar_liste(rå):
+    """Valider en liste med inntektsår fra klienten. None hvis ikke oppgitt.
+
+    Årene styrer hvilken offisiell skjermingsrente som brukes per år, så de må
+    være reelle årstall — ikke vilkårlige tall.
+    """
+    if not rå:
+        return None
+    if not isinstance(rå, list):
+        raise ValueError("skjermingsar_liste må være en liste")
+    år = [int(x) for x in rå][:60]
+    if any(y < 1990 or y > 2100 for y in år):
+        raise ValueError("Urimelig årstall i skjermingsar_liste")
+    return sorted(år)
+
 @bp.route("/api/skatt", methods=["POST"])
 def api_skatt():
     """Beregn skatt på realisert aksjegevinst med skjermingsfradrag.
@@ -507,6 +660,7 @@ def api_skatt():
         skjermingsrente = float(d.get("skjermingsrente", SKJERMINGSRENTE_DEFAULT))
         override = d.get("skjerming_override")
         skjerming_override = float(override) if override not in (None, "") else None
+        skjermingsar_liste = _les_ar_liste(d.get("skjermingsar_liste"))
     except (TypeError, ValueError):
         return jsonify({"feil": "Ugyldige tall i input"}), 400
 
@@ -519,6 +673,7 @@ def api_skatt():
         inngangsverdi, salgssum, ar=ar,
         skjermingsrente=skjermingsrente,
         skjerming_override=skjerming_override,
+        skjermingsar_liste=skjermingsar_liste,
     ))
 
 
@@ -538,6 +693,7 @@ def api_skatt_ask():
         skjermingsrente = float(d.get("skjermingsrente", SKJERMINGSRENTE_DEFAULT))
         override = d.get("skjerming_override")
         skjerming_override = float(override) if override not in (None, "") else None
+        skjermingsar_liste = _les_ar_liste(d.get("skjermingsar_liste"))
     except (TypeError, ValueError):
         return jsonify({"feil": "Ugyldige tall i input"}), 400
 
@@ -550,7 +706,19 @@ def api_skatt_ask():
         innskudd, verdi, uttak=uttak, ar=ar,
         skjermingsrente=skjermingsrente,
         skjerming_override=skjerming_override,
+        skjermingsar_liste=skjermingsar_liste,
     ))
+
+
+@bp.route("/api/skjermingsrenter")
+def api_skjermingsrenter():
+    """Offisielle skjermingsrenter per inntektsår (aksjer)."""
+    return jsonify({
+        "satser":     {str(y): round(r * 100, 3) for y, r in sorted(SKJERMINGSRENTER.items())},
+        "siste_ar":   SISTE_KJENTE_SKJERMINGSAR,
+        "default_pct": round(SKJERMINGSRENTE_DEFAULT * 100, 3),
+        "kilde":      "https://www.skatteetaten.no/satser/skjermingsrente-for-aksjer-og-enkeltpersonforetak/",
+    })
 
 
 # ─── Korrelasjon ────────────────────────────────────────────────────────────

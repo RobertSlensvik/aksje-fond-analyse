@@ -6,6 +6,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
+# Tidssone. Uten dette kjører containeren i UTC, og da bommer `date.today()`
+# på kvelden norsk tid: et kjøp registrert 00:30 blir avvist som «framtidig
+# dato», og månedsrapporten bytter måned et døgn for sent.
+ENV TZ=Europe/Oslo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 WORKDIR /app
 
 # Installer pip-avhengigheter først — cached layer hvis kun applikasjonskode endres
@@ -17,11 +23,20 @@ COPY analyse/ ./analyse/
 COPY templates/ ./templates/
 COPY app.py .
 
-# Opprett data-katalog som mountes inn fra host, og kjør som ikke-root-bruker
+# data/ bind-mountes fra host. På Linux må container-brukeren ha SAMME uid/gid
+# som eieren av host-katalogen, ellers nektes skriving. Docker Desktop på
+# macOS/Windows mapper dette automatisk, så feilen dukker først opp på Linux.
+# Sett UID/GID i .env til `id -u`/`id -g` hvis din bruker ikke er 1000:1000.
+ARG UID=1000
+ARG GID=1000
 RUN mkdir -p /app/data \
-    && useradd --create-home --shell /bin/bash --uid 1000 appuser \
-    && chown -R appuser:appuser /app
-USER appuser
+    && (getent group "$GID" || groupadd --gid "$GID" appuser) \
+    && useradd --no-log-init --create-home --shell /bin/bash \
+               --uid "$UID" --gid "$GID" appuser 2>/dev/null \
+       || useradd --no-log-init --create-home --shell /bin/bash \
+                  --uid "$UID" --gid "$GID" --non-unique appuser \
+    && chown -R "$UID:$GID" /app
+USER $UID:$GID
 
 EXPOSE 5001
 
