@@ -105,14 +105,15 @@ def portefolje_aksje_stats():
     hist = {}
     for tk in tickere:
         h = hent_historikk(tk, "max")
-        if h is None:
-            return None
-        hist[tk] = h["Close"]
+        if h is not None:
+            hist[tk] = h["Close"]
+    if not hist:
+        return None
     df = pd.DataFrame(hist).dropna()
     if len(df) < 60:
         return None
     log_ret = np.log(df / df.shift(1)).dropna()
-    n = len(tickere)
+    n = len(hist)
     port_daglig = (log_ret * (1 / n)).sum(axis=1)
     ann_vol = float(port_daglig.std() * math.sqrt(252))
     hist_cagr = float(math.exp(port_daglig.mean() * 252) - 1)

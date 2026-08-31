@@ -21,6 +21,7 @@ import datetime as dt
 import re
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 from .instrumenter import alle_instrumenter
 from .nyheter import hent_nyheter_for
@@ -48,26 +49,32 @@ def parse_intervall(tekst):
 
 
 def kjor_en_runde():
-    """Hent nyheter for alle instrumenter. Returnerer (nye_saker, antall_feil)."""
+    """Hent nyheter for alle instrumenter parallelt. Returnerer (nye_saker, antall_feil)."""
     instrumenter = alle_instrumenter()
     if not instrumenter:
         _logg("Ingen instrumenter registrert — ingenting å hente.")
         return 0, 0
 
+    # Tell antall loggede saker per ticker FØR henting, slik at vi kan rapportere nytt.
+    for_antall = {item["ticker"]: len(saker_for(item["ticker"])) for item in instrumenter}
+
+    futures = {}
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        futures = {ex.submit(hent_nyheter_for, item): item for item in instrumenter}
+
     nye_totalt = 0
     feil = 0
-    for item in instrumenter:
+    for future, item in futures.items():
         ticker = item["ticker"]
-        for_ = len(saker_for(ticker))
         try:
-            hent_nyheter_for(item)
+            future.result()
+            etter = len(saker_for(ticker))
+            nye = etter - for_antall[ticker]
+            nye_totalt += nye
+            _logg(f"  {ticker}: {nye:+d} nye (totalt {etter})")
         except Exception as e:                      # noqa: BLE001 — én ticker skal
             feil += 1                               # ikke velte hele runden
             _logg(f"  {ticker}: FEIL — {type(e).__name__}: {e}")
-            continue
-        nye = len(saker_for(ticker)) - for_
-        nye_totalt += nye
-        _logg(f"  {ticker}: {nye:+d} nye (totalt {for_ + nye})")
 
     status = logg_status()
     _logg(f"Runde ferdig: {nye_totalt} nye saker, {feil} feil. "

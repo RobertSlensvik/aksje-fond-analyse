@@ -14,6 +14,8 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 from .config import (
     GOOGLE_NEWS_AKTIV,
+    GOOGLE_NEWS_LOKALE,
+    GOOGLE_NEWS_LOKALE_DEFAULT,
     GOOGLE_NEWS_MAKS,
     GOOGLE_NEWS_URL,
     RSS_KILDER,
@@ -113,10 +115,11 @@ def _forhandshent(urls):
         list(ex.map(_hent_rss, manglende))
 
 
-def _google_news_url(søkeord):
-    """Søke-URL for ett søkeord. Flerordsuttrykk siteres for presisjon."""
+def _google_news_url(søkeord, flagg=""):
+    """Søke-URL for ett søkeord. Lokale velges fra instrumentets flagg."""
+    hl, gl = GOOGLE_NEWS_LOKALE.get(flagg, GOOGLE_NEWS_LOKALE_DEFAULT)
     q = f'"{søkeord}"' if " " in søkeord else søkeord
-    return GOOGLE_NEWS_URL.format(q=quote_plus(q))
+    return GOOGLE_NEWS_URL.format(q=quote_plus(q), hl=hl, gl=gl)
 
 
 def _som_sak(sak, kilde_navn):
@@ -133,17 +136,18 @@ def _som_sak(sak, kilde_navn):
     }
 
 
-def _rss_treff(søkeord):
+def _rss_treff(søkeord, flagg=""):
     """Alle RSS-saker som gjelder et instrument, nyeste først.
 
     Redaksjonelle feeder matches mot søkeordene. Google News-treff slipper
     matchingen — søket er allerede filteret, og en frase som "Nordea Global
     Dividend" står sjelden ordrett i en overskrift som likevel handler om det.
+    `flagg` styrer Google News-lokale (norsk for 🇳🇴, engelsk ellers).
     """
     if not søkeord:
         return []
 
-    gn_kilder = ([(s, _google_news_url(s)) for s in søkeord[:4]]
+    gn_kilder = ([(s, _google_news_url(s, flagg)) for s in søkeord[:4]]
                  if GOOGLE_NEWS_AKTIV else [])
     _forhandshent([u for _, u in RSS_KILDER] + [u for _, u in gn_kilder])
 
@@ -202,7 +206,7 @@ def hent_nyheter_for(item, maks=8):
         })
 
     sett_titler = {s["tittel"].lower() for s in saker}
-    for s in _rss_treff(item.get("søkeord", [])):
+    for s in _rss_treff(item.get("søkeord", []), flagg=item.get("flagg", "")):
         if s["tittel"].lower() not in sett_titler:
             saker.append(s)
             sett_titler.add(s["tittel"].lower())

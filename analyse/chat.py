@@ -45,6 +45,7 @@ def _bygg_kontekst():
         if _KONTEKST_CACHE["tekst"] is not None and nå - _KONTEKST_CACHE["ts"] < _KONTEKST_TTL:
             return _KONTEKST_CACHE["tekst"]
 
+    # Beregn utenfor låsen for ikke å blokkere andre tråder.
     linjer = [f"Dagens dato: {dt.date.today().isoformat()}."]
     try:
         from .rapport import lag_rapport
@@ -70,8 +71,10 @@ def _bygg_kontekst():
 
     tekst = "\n".join(linjer)
     with _LOCK:
-        _KONTEKST_CACHE["tekst"] = tekst
-        _KONTEKST_CACHE["ts"] = nå
+        # Dobbeltsjekk: en annen tråd kan ha fylt cachen mens vi beregnet.
+        if _KONTEKST_CACHE["tekst"] is None or nå - _KONTEKST_CACHE["ts"] >= _KONTEKST_TTL:
+            _KONTEKST_CACHE["tekst"] = tekst
+            _KONTEKST_CACHE["ts"] = nå
     return tekst
 
 

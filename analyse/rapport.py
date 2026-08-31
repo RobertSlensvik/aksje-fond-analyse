@@ -189,9 +189,9 @@ def _bygg_30d_graf(serier, instrumenter, har_beholdning, idag):
     datoer = [str(d.date()) for d in df.index]
 
     if har_beholdning:
-        andeler = {i["ticker"]: i["andeler"] for i in instrumenter}
-        verdi = [round(float(sum(rad[tk] * andeler.get(tk, 0) for tk in df.columns)), 2)
-                 for _, rad in df.iterrows()]
+        andeler_map = {i["ticker"]: i["andeler"] for i in instrumenter}
+        vekter = pd.Series({col: andeler_map.get(col, 0.0) for col in df.columns})
+        verdi = [round(float(v), 2) for v in df.dot(vekter)]
         return {"datoer": datoer, "verdi": verdi, "type": "kr"}
 
     # Lik-vektet indeks: snitt av hver kolonnes normaliserte verdi.

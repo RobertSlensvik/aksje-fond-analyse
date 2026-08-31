@@ -5,7 +5,6 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import pandas as pd
-import yfinance as yf
 from flask import Blueprint, current_app, jsonify, render_template, request
 
 from .beholdning import les_beholdning, skriv_beholdning
@@ -194,14 +193,13 @@ def api_prognose(ticker, belop, manedlig):
                 "gevinst_forventet_pct": round((p50 / innskudd_totalt - 1) * 100, 1) if innskudd_totalt > 0 else 0,
             })
 
-        info = yf.Ticker(ticker).info or {}
-        meta = next((x for x in alle_instrumenter() if x["ticker"] == ticker), {})
+        info = hent_info(ticker)
 
         return jsonify({
             "ticker":          ticker,
-            "navn":            meta.get("navn", info.get("longName", ticker)),
-            "flagg":           meta.get("flagg", ""),
-            "valuta":          info.get("currency", ""),
+            "navn":            info.get("navn", ticker),
+            "flagg":           info.get("flagg", ""),
+            "valuta":          info.get("valuta", ""),
             "belop":           belop,
             "manedlig":        manedlig,
             "cagr_pct":        round(cagr * 100, 2),
@@ -618,7 +616,11 @@ def api_chat():
     if not isinstance(meldinger, list) or not meldinger:
         return jsonify({"feil": "Forventet en ikke-tom liste 'meldinger'"}), 400
     svar = chat_svar(meldinger)
-    return jsonify(svar), (200 if "svar" in svar else 503 if svar.get("konfigurert") is False else 200)
+    if "svar" in svar:
+        return jsonify(svar), 200
+    if svar.get("konfigurert") is False:
+        return jsonify(svar), 503
+    return jsonify(svar), 502
 
 
 # ─── Månedsrapport ──────────────────────────────────────────────────────────

@@ -122,7 +122,15 @@ RSS_KILDER = [
 # av søket, så de slipper søkeord-matchingen de andre kildene går gjennom.
 
 GOOGLE_NEWS_AKTIV = True
-GOOGLE_NEWS_URL   = "https://news.google.com/rss/search?q={q}&hl=no&gl=NO&ceid=NO:no"
+GOOGLE_NEWS_URL   = "https://news.google.com/rss/search?q={q}&hl={hl}&gl={gl}&ceid={gl}:{hl}"
+
+# Flagg → (språk, land) for Google News-lokale.
+# Norske instrumenter søker på norsk, alt annet på engelsk — VADER er trent på
+# engelsk, så internasjonal dekning scores uansett mer presist på engelsk.
+GOOGLE_NEWS_LOKALE: dict[str, tuple[str, str]] = {
+    "🇳🇴": ("no", "NO"),
+}
+GOOGLE_NEWS_LOKALE_DEFAULT = ("en", "US")
 
 # Per søkeord. Sakene loggføres i sin helhet, men bare de ferskeste vises i
 # Nyheter-fanen — ellers ville måneder gamle treff dratt dagens sentiment.
